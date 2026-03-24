@@ -1,0 +1,13 @@
+bin/
+obj/
+.artifacts/
+.dotnet-cli/
+.vs/
+.vscode/
+.zencoder/
+.zenflow/
+*.user
+*.suo
+
+# Vendor SDKs are kept locally inside the tracked SDKs folder.
+# The Nikon/Canon directories themselves stay in Git via their nested .gitignore files.

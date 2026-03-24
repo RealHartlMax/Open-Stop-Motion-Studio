@@ -21,6 +21,7 @@
     <!-- Stream Deck Anbindung: SDK + Hardware-Provider -->
     <PackageReference Include="OpenMacroBoard.SDK" Version="6.0.0" />
     <PackageReference Include="StreamDeckSharp" Version="6.0.0" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="2.1.13" />
 
     <!-- MVVM-Infrastruktur -->
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />

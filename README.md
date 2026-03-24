@@ -1,254 +1,277 @@
-# 🎬 Open Stop Motion Studio — MVP v0.1
+# Open Stop Motion Studio — v0.1
 
-**License:** GPLv3
-**Platform:** Windows 10/11 (.NET 8, WPF)
-**Status:** MVP – Phase 1 (Live Camera + Onion Skin + Stream Deck)
+**License:** GPLv3  
+**Platform:** Windows 10/11 (.NET 10, WPF)  
+**Status:** Early MVP / frueher MVP
+
+`CHANGELOG:` [CHANGELOG.md](CHANGELOG.md)  
+`Vendor SDK notes:` [SDKs/README.md](SDKs/README.md)
 
 ---
 
-# 🇬🇧 English
+# English
 
 ## Overview
 
-**Open Stop Motion Studio** is an open-source tool for professional and hobby animators.
-Its goal is to bridge the gap between simple webcam tools and expensive professional solutions like Dragonframe — modular, extensible, and fully GPLv3.
+**Open Stop Motion Studio** is an open-source stop-motion tool for hobby and professional workflows on Windows.
+The current `v0.1` release is an early but usable MVP focused on camera preview, frame capture, timeline playback, onion skinning, and first RAW-import groundwork.
 
----
+It is not a full Dragonframe replacement yet.
+Features such as EXR master output, tethered DSLR control, motion control, and DMX authoring are still planned or in progress.
 
-## 🚀 Quick Start (Visual Studio)
+## Current Feature Set
 
-### Requirements
+### Capture and Preview
 
-* Visual Studio 2022 (Community Edition is sufficient)
-* .NET 8 SDK (included with Visual Studio)
-* Windows 10 or 11 (WPF is Windows-only)
+- Live camera preview through Windows DirectShow
+- Camera selection for webcams, USB cameras, capture cards, and virtual cameras
+- Webcam driver/settings dialog when the device exposes one
+- Live luminance histogram below the camera selector
+- Status bar and startup/build launcher via `start.bat`
 
-### Steps
+### Stop-Motion Workflow
 
-1. Clone the repository or download as ZIP
-2. Open `OpenStopMotionStudio.sln` in Visual Studio
-3. NuGet will automatically restore dependencies
-4. Press **F5** to run the application
+- Frame capture with `Space`
+- Shot naming with sequential file naming
+- Project folder selection
+- Onion skin with 1-3 layers and adjustable opacity presets
+- Undo support for the last captured frame
 
----
+### Timeline and Playback
 
-## 📦 Dependencies Explained
+- Dope-sheet style timeline area
+- Playback controls with manual FPS input from `1` to `120`
+- Mouse-wheel scrubbing over the timeline
+- `Shift` + mouse wheel for larger frame jumps
+- Playback preview of captured frames
 
-* **DirectShowLib-2005**
-  Handles camera communication via Windows DirectShow API.
-  Supports webcams, HDMI capture cards, and any video capture device.
+### File Output
 
-* **Emgu.CV**
-  OpenCV wrapper for C#.
-  Not heavily used in MVP yet, but prepared for:
+- `JPEG sequence` capture mode
+- `TIFF + Proxy` capture mode
+- Shot-based naming for saved frames
+- Internal frame-offset support for film-style sequences such as `1001`
 
-  * Multi-frame onion skin
-  * Difference blending
-  * Motion detection (shake warning)
+### RAW / Nikon Foundation
 
-* **OpenMacroBoard.SDK + OpenMacroBoard.StreamDeck**
-  Enables integration with Elgato Stream Deck (all models supported).
+- Local Nikon SDK discovery from `SDKs/Nikon`
+- Nikon `NEF` / `NRW` folder import through the local Nikon Image SDK
+- Import output to:
+  - `Raw/<Shot>/...tif`
+  - `Proxy/<Shot>/...jpg` or `...png`
+- Configurable import start frame, default `1001`
 
-* **CommunityToolkit.Mvvm**
-  Provides MVVM infrastructure.
-  Light usage in MVP, foundation for future UI architecture.
+### Hardware Integration
 
----
+- Stream Deck integration for capture, onion toggle, opacity presets, and undo
+- Local vendor SDK folder structure for Nikon and Canon development work
 
-## 📷 DSLR Cameras (Canon / Sony)
+## Quick Start
 
-Currently, cameras are accessed via DirectShow (webcams & capture cards only).
+### Option 1: Start Script
 
-Planned:
+1. Install a current `.NET 10 SDK`
+2. Run [`start.bat`](start.bat)
+3. Select a camera
+4. Click `Kamera starten`
+5. Press `Space` to capture a frame
 
-* **Canon:** EDSDK
-* **Sony:** Remote SDK
+### Option 2: Visual Studio
 
-The `CameraManager` is designed to support this extension without breaking existing code.
+1. Open [`Open-Stop-Motion-Studio.sln`](Open-Stop-Motion-Studio.sln)
+2. Restore NuGet packages
+3. Start the project with `F5`
 
----
+## Requirements
 
-## ⌨️ Keyboard Shortcuts
+- Windows 10 or Windows 11
+- .NET 10 SDK
+- Visual Studio 2022 recommended for development
+- A webcam, capture card, or other DirectShow-compatible video source for live preview
+- Optional: Nikon SDK files placed locally under `SDKs/Nikon` for NEF import
 
-| Action                   | Shortcut |
-| ------------------------ | -------- |
-| Capture Frame            | Space    |
-| Undo (Phase 2)           | Ctrl + Z |
-| Toggle Overlay (Phase 2) | O        |
+## Keyboard and UI Shortcuts
 
----
+| Action | Shortcut |
+| --- | --- |
+| Capture frame | `Space` |
+| Scrub timeline | Mouse wheel |
+| Scrub faster | `Shift` + mouse wheel |
 
-## 🎛️ Stream Deck Layout (Optional)
+## Project Structure
 
-```
-[ CAPTURE ] [ ONION ] [ 25% ] [ 50% ] [ 75% ]
-[         ] [       ] [      ] [      ] [      ]
-[  UNDO   ] [       ] [      ] [      ] [      ]
-```
-
-Works with all Stream Deck models. Fully optional.
-
----
-
-## 🧱 Project Structure
-
-```
+```text
 OpenStopMotionStudio/
 ├── Core/
 │   ├── CameraManager.cs
 │   ├── CaptureManager.cs
+│   ├── NikonNefImportService.cs
+│   ├── NikonSdkDiscovery.cs
 │   ├── OverlayManager.cs
 │   └── StreamDeckManager.cs
 ├── GUI/
 │   ├── MainWindow.xaml
-│   └── MainWindow.xaml.cs
-├── App.xaml
-├── App.xaml.cs
+│   ├── MainWindow.xaml.cs
+│   ├── MainWindow.Timeline.cs
+│   ├── MainWindow.Histogram.cs
+│   └── MainWindow.RawImport.cs
+├── SDKs/
+├── CHANGELOG.md
+├── README.md
+├── start.bat
 └── OpenStopMotionStudio.csproj
 ```
 
----
+## Roadmap
 
-## 🗺️ Roadmap
+| Phase | Status | Focus |
+| --- | --- | --- |
+| 1 | done | Live preview, capture, onion skin, Stream Deck |
+| 2 | in progress | TIFF/proxy workflow, RAW import groundwork, EXR later |
+| 3 | in progress | Timeline, playback, advanced onion skin |
+| 4 | planned | Tethered DSLR control and deeper camera SDK integration |
+| 5 | planned | Motion control |
+| 6 | planned | DMX lighting and production tools |
 
-| Phase | Focus                                     |
-| ----- | ----------------------------------------- |
-| 1 ✅   | Live Camera + Onion Skin + Stream Deck    |
-| 2     | RAW/TIFF/EXR + Proxy Workflow             |
-| 3     | Timeline / Playback + Advanced Onion Skin |
-| 4     | Motion Control (Stepper / Arduino)        |
-| 5     | DMX Lighting Integration                  |
-| 6     | Lip Sync, X-Sheet, Pro Features           |
+## Documentation
 
----
+- Version changes: [CHANGELOG.md](CHANGELOG.md)
+- Local SDK handling: [SDKs/README.md](SDKs/README.md)
 
-## 📜 License
+## Contributing
+
+Ideas, testing feedback, bug reports, and code contributions are welcome.
+The goal is to grow this project into a practical open-source stop-motion production tool.
+
+## License
 
 This project is licensed under the **GNU General Public License v3.0 (GPLv3)**.
 
-You are free to use, modify, and distribute this software under the same terms.
-All derivative work must remain open source.
-
 ---
 
-## 🤝 Contributing
+# Deutsch
 
-Contributions, ideas, and feedback are welcome.
-Goal: build a fully-featured open alternative for stop-motion production.
+## Ueberblick
 
----
+**Open Stop Motion Studio** ist ein Open-Source-Stop-Motion-Tool fuer Hobby- und professionelle Workflows unter Windows.
+Die aktuelle Version `v0.1` ist ein frueher, aber bereits nutzbarer MVP mit Fokus auf Kameravorschau, Frame-Aufnahme, Timeline-Playback, Onion Skin und dem ersten Fundament fuer RAW-Import.
 
-# 🇩🇪 Deutsch
+Es ist noch kein vollstaendiger Dragonframe-Ersatz.
+Funktionen wie EXR-Master-Ausgabe, tethered DSLR-Steuerung, Motion Control und DMX-Authoring sind noch geplant oder im Ausbau.
 
-## Überblick
+## Aktueller Funktionsstand
 
-**Open Stop Motion Studio** ist ein Open-Source-Tool für professionelle und Hobby-Animatoren.
-Ziel ist es, die Lücke zwischen einfachen Webcam-Tools und teurer Profi-Software wie Dragonframe zu schließen — modular, erweiterbar und unter GPLv3.
+### Aufnahme und Vorschau
 
----
+- Live-Kameravorschau ueber Windows DirectShow
+- Kameraauswahl fuer Webcams, USB-Kameras, Capture Cards und virtuelle Kameras
+- Webcam-/Treiberdialog, wenn das Geraet ihn anbietet
+- Live-Luminanz-Histogramm unter der Kameraauswahl
+- Statusleiste und Build-/Start-Launcher ueber `start.bat`
 
-## 🚀 Schnellstart (Visual Studio)
+### Stop-Motion-Workflow
 
-### Voraussetzungen
+- Frame-Aufnahme mit `Leertaste`
+- Shot-Namen mit fortlaufender Dateibenennung
+- Projektordner-Auswahl
+- Onion Skin mit 1-3 Layern und einstellbaren Transparenz-Presets
+- Undo fuer das zuletzt aufgenommene Frame
 
-* Visual Studio 2022 (Community Edition ausreichend)
-* .NET 8 SDK
-* Windows 10 oder 11 (WPF benötigt Windows)
+### Timeline und Playback
 
-### Schritte
+- Dope-Sheet-aehnliche Timeline-Ansicht
+- Playback-Steuerung mit direkter FPS-Eingabe von `1` bis `120`
+- Scrubbing per Mausrad ueber der Timeline
+- `Shift` + Mausrad fuer groessere Frame-Spruenge
+- Playback-Vorschau der aufgenommenen Frames
 
-1. Repository klonen oder ZIP herunterladen
-2. `OpenStopMotionStudio.sln` öffnen
-3. NuGet lädt automatisch alle Abhängigkeiten
-4. **F5 drücken** → Anwendung startet
+### Dateiausgabe
 
----
+- `JPEG sequence` als Capture-Modus
+- `TIFF + Proxy` als Capture-Modus
+- Shot-basierte Dateinamen
+- Interner Frame-Offset fuer filmtypische Sequenzen wie `1001`
 
-## 📦 Abhängigkeiten erklärt
+### RAW- / Nikon-Grundlage
 
-* **DirectShowLib-2005**
-  Kamera-Anbindung über Windows DirectShow API
-  Unterstützt Webcams, Capture Cards, etc.
+- Lokale Nikon-SDK-Erkennung aus `SDKs/Nikon`
+- Nikon-`NEF`- / `NRW`-Ordnerimport ueber das lokale Nikon Image SDK
+- Import-Ausgabe nach:
+  - `Raw/<Shot>/...tif`
+  - `Proxy/<Shot>/...jpg` oder `...png`
+- Konfigurierbarer Import-Startframe, standardmaessig `1001`
 
-* **Emgu.CV**
-  OpenCV-Wrapper für C#
-  Vorbereitung für:
+### Hardware-Integration
 
-  * Multi-Onion Skin
-  * Differenz-Blending
-  * Motion Detection (Wackelwarnung)
+- Stream-Deck-Anbindung fuer Capture, Onion-Toggle, Transparenz-Presets und Undo
+- Lokale Vendor-SDK-Struktur fuer Nikon- und Canon-Entwicklung
 
-* **OpenMacroBoard.SDK + StreamDeck**
-  Integration für Elgato Stream Deck (alle Modelle)
+## Schnellstart
 
-* **CommunityToolkit.Mvvm**
-  Grundlage für MVVM-Architektur (späterer Ausbau)
+### Option 1: Start-Skript
 
----
+1. Aktuelles `.NET 10 SDK` installieren
+2. [`start.bat`](start.bat) ausfuehren
+3. Kamera auswaehlen
+4. `Kamera starten` klicken
+5. Mit `Leertaste` ein Frame aufnehmen
 
-## 📷 DSLR-Kameras (Canon / Sony)
+### Option 2: Visual Studio
 
-Im MVP erfolgt die Anbindung über DirectShow (keine direkte DSLR-Unterstützung).
+1. [`Open-Stop-Motion-Studio.sln`](Open-Stop-Motion-Studio.sln) oeffnen
+2. NuGet-Pakete wiederherstellen
+3. Projekt mit `F5` starten
 
-Geplant:
+## Voraussetzungen
 
-* Canon → EDSDK
-* Sony → Remote SDK
+- Windows 10 oder Windows 11
+- .NET 10 SDK
+- Visual Studio 2022 empfohlen fuer die Entwicklung
+- Eine Webcam, Capture Card oder andere DirectShow-kompatible Videoquelle fuer die Live-Vorschau
+- Optional: lokal abgelegte Nikon-SDK-Dateien unter `SDKs/Nikon` fuer den NEF-Import
 
-Die Architektur des `CameraManager` ist bereits darauf vorbereitet.
+## Tastatur- und UI-Shortcuts
 
----
+| Aktion | Shortcut |
+| --- | --- |
+| Frame aufnehmen | `Leertaste` |
+| Timeline scrubbing | Mausrad |
+| Schneller scrubbing | `Shift` + Mausrad |
 
-## ⌨️ Tastaturkürzel
+## Projektstruktur
 
-| Aktion                   | Shortcut  |
-| ------------------------ | --------- |
-| Frame aufnehmen          | Leertaste |
-| Undo (Phase 2)           | Strg + Z  |
-| Overlay Toggle (Phase 2) | O         |
-
----
-
-## 🎛️ Stream Deck Layout (Optional)
-
+```text
+OpenStopMotionStudio/
+├── Core/
+├── GUI/
+├── SDKs/
+├── CHANGELOG.md
+├── README.md
+├── start.bat
+└── OpenStopMotionStudio.csproj
 ```
-[ CAPTURE ] [ ONION ] [ 25% ] [ 50% ] [ 75% ]
-[         ] [       ] [      ] [      ] [      ]
-[  UNDO   ] [       ] [      ] [      ] [      ]
-```
 
-Funktioniert mit allen Stream Deck Modellen. Optional.
+## Roadmap
 
----
+| Phase | Status | Fokus |
+| --- | --- | --- |
+| 1 | fertig | Live-Vorschau, Capture, Onion Skin, Stream Deck |
+| 2 | in Arbeit | TIFF/Proxy-Workflow, RAW-Import-Fundament, EXR spaeter |
+| 3 | in Arbeit | Timeline, Playback, Advanced Onion Skin |
+| 4 | geplant | Tethered DSLR-Steuerung und tiefere Kamera-SDK-Integration |
+| 5 | geplant | Motion Control |
+| 6 | geplant | DMX-Licht und Produktionstools |
 
-## 🧱 Projektstruktur
+## Dokumentation
 
-(Siehe englischen Abschnitt oben – identisch)
+- Versionsaenderungen: [CHANGELOG.md](CHANGELOG.md)
+- Lokale SDK-Handhabung: [SDKs/README.md](SDKs/README.md)
 
----
+## Mitwirken
 
-## 🗺️ Roadmap
+Ideen, Test-Feedback, Bugreports und Code-Beitraege sind willkommen.
+Ziel ist es, das Projekt zu einem praxistauglichen Open-Source-Tool fuer Stop-Motion-Produktion weiterzuentwickeln.
 
-| Phase | Fokus                                  |
-| ----- | -------------------------------------- |
-| 1 ✅   | Live-Kamera + Onion Skin + Stream Deck |
-| 2     | RAW/TIFF/EXR + Proxy Workflow          |
-| 3     | Timeline / Playback                    |
-| 4     | Motion Control                         |
-| 5     | DMX Lighting                           |
-| 6     | Profi-Features                         |
+## Lizenz
 
----
-
-## 📜 Lizenz
-
-Dieses Projekt steht unter der **GNU General Public License v3 (GPLv3)**.
-
-Alle Weiterentwicklungen müssen ebenfalls Open Source bleiben.
-
----
-
-## 🤝 Mitwirken
-
-Beiträge, Ideen und Feedback sind willkommen.
-Ziel ist eine vollwertige Open-Source-Alternative für Stop-Motion-Produktion.
+Dieses Projekt steht unter der **GNU General Public License v3.0 (GPLv3)**.

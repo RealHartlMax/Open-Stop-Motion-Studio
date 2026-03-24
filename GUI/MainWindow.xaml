@@ -37,6 +37,10 @@
         <!--  HAUPTBEREICH                                   -->
         <!-- ═══════════════════════════════════════════════ -->
         <Grid Grid.Row="1" Margin="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="230"/>
+            </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <!-- Live-Kamera-Feed (flexibel) -->
                 <ColumnDefinition Width="*"/>
@@ -45,7 +49,8 @@
             </Grid.ColumnDefinitions>
 
             <!-- ─── KAMERA-ANSICHT ─── -->
-            <Border Grid.Column="0"
+            <Border Grid.Row="0"
+                    Grid.Column="0"
                     Background="#0D0D1A"
                     CornerRadius="8"
                     Margin="0,0,10,0"
@@ -58,10 +63,24 @@
                            Stretch="Uniform"
                            RenderOptions.BitmapScalingMode="HighQuality"/>
 
-                    <!-- Onion Skin: letztes aufgenommenes Bild, transparent darüber -->
-                    <Image x:Name="OnionSkinImage"
+                    <!-- Advanced Onion Skin: mehrere vorherige Frames -->
+                    <Image x:Name="OnionSkinImageLayer3"
                            Stretch="Uniform"
-                           Opacity="0.4"
+                           Visibility="Collapsed"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+
+                    <Image x:Name="OnionSkinImageLayer2"
+                           Stretch="Uniform"
+                           Visibility="Collapsed"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+
+                    <Image x:Name="OnionSkinImageLayer1"
+                           Stretch="Uniform"
+                           Visibility="Collapsed"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+
+                    <Image x:Name="PlaybackImage"
+                           Stretch="Uniform"
                            Visibility="Collapsed"
                            RenderOptions.BitmapScalingMode="HighQuality"/>
 
@@ -84,16 +103,210 @@
                 </Grid>
             </Border>
 
+            <Border Grid.Row="1"
+                    Grid.Column="0"
+                    Background="{StaticResource BackgroundMid}"
+                    CornerRadius="8"
+                    Margin="0,10,10,0"
+                    Padding="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="180"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button x:Name="PrevFrameButton"
+                                Grid.Column="0"
+                                Content="◀ Vorheriges"
+                                Style="{StaticResource StudioButton}"
+                                Padding="10,6"
+                                FontSize="11"
+                                Click="PrevFrame_Click"/>
+
+                        <Button x:Name="PlayPauseButton"
+                                Grid.Column="1"
+                                Content="▶ Abspielen"
+                                Style="{StaticResource StudioButton}"
+                                Padding="10,6"
+                                FontSize="11"
+                                Margin="8,0,0,0"
+                                Click="PlayPause_Click"/>
+
+                        <Button x:Name="NextFrameButton"
+                                Grid.Column="2"
+                                Content="Nächstes ▶"
+                                Style="{StaticResource StudioButton}"
+                                Padding="10,6"
+                                FontSize="11"
+                                Margin="8,0,0,0"
+                                Click="NextFrame_Click"/>
+
+                        <TextBlock x:Name="PlaybackStatusText"
+                                   Grid.Column="3"
+                                   Text="Timeline leer"
+                                   Foreground="{StaticResource TextPrimary}"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Margin="12,0,0,0"/>
+
+                        <StackPanel Grid.Column="4">
+                            <TextBlock x:Name="PlaybackSpeedLabel"
+                                       Text="Playback: 12 fps"
+                                       Foreground="{StaticResource TextSecondary}"
+                                       FontSize="11"
+                                       Margin="0,0,0,4"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBox x:Name="PlaybackFpsTextBox"
+                                         Style="{StaticResource StudioTextBox}"
+                                         Width="50"
+                                         Text="12"
+                                         HorizontalContentAlignment="Center"
+                                         LostFocus="PlaybackFpsTextBox_LostFocus"
+                                         KeyDown="PlaybackFpsTextBox_KeyDown"/>
+                                <TextBlock Text="fps (1-120)"
+                                           Foreground="{StaticResource TextSecondary}"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <TextBlock x:Name="TimelineRangeText"
+                                   Grid.Column="5"
+                                   Text="Start 1 | Ende 250"
+                                   Foreground="{StaticResource TextSecondary}"
+                                   FontSize="11"
+                                   VerticalAlignment="Center"
+                                   Margin="12,0,0,0"/>
+                    </Grid>
+
+                    <Grid Grid.Row="1">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="132"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Row="0"
+                                Grid.Column="0"
+                                Background="#101427"
+                                CornerRadius="6,0,0,6"
+                                BorderBrush="#2D2D44"
+                                BorderThickness="1,1,0,1">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="28"/>
+                                    <RowDefinition Height="34"/>
+                                    <RowDefinition Height="34"/>
+                                    <RowDefinition Height="34"/>
+                                    <RowDefinition Height="34"/>
+                                </Grid.RowDefinitions>
+
+                                <Border Grid.Row="0" Background="#1B2034">
+                                    <TextBlock Text="Dope Sheet"
+                                               Foreground="White"
+                                               FontWeight="Bold"
+                                               FontSize="11"
+                                               VerticalAlignment="Center"
+                                               Margin="12,0,0,0"/>
+                                </Border>
+
+                                <Border Grid.Row="1" Background="#35202A">
+                                    <TextBlock Text="Summary"
+                                               Foreground="{StaticResource TextPrimary}"
+                                               FontSize="11"
+                                               VerticalAlignment="Center"
+                                               Margin="12,0,0,0"/>
+                                </Border>
+
+                                <Border Grid.Row="2" Background="#20263C">
+                                    <TextBlock Text="Capture"
+                                               Foreground="{StaticResource TextPrimary}"
+                                               FontSize="11"
+                                               VerticalAlignment="Center"
+                                               Margin="12,0,0,0"/>
+                                </Border>
+
+                                <Border Grid.Row="3" Background="#171D30">
+                                    <TextBlock Text="Motion Ctrl"
+                                               Foreground="{StaticResource TextSecondary}"
+                                               FontSize="11"
+                                               VerticalAlignment="Center"
+                                               Margin="12,0,0,0"/>
+                                </Border>
+
+                                <Border Grid.Row="4" Background="#141A2B">
+                                    <TextBlock Text="DMX Licht"
+                                               Foreground="{StaticResource TextSecondary}"
+                                               FontSize="11"
+                                               VerticalAlignment="Center"
+                                               Margin="12,0,0,0"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Row="0"
+                                Grid.Column="1"
+                                Background="#0F1220"
+                                CornerRadius="0,6,6,0"
+                                BorderBrush="#2D2D44"
+                                BorderThickness="0,1,1,1">
+                            <ScrollViewer x:Name="TimelineScrollViewer"
+                                          HorizontalScrollBarVisibility="Hidden"
+                                          VerticalScrollBarVisibility="Disabled"
+                                          CanContentScroll="False"
+                                          PanningMode="HorizontalOnly"
+                                          PreviewMouseWheel="TimelineScrollViewer_PreviewMouseWheel">
+                                <Canvas x:Name="TimelineCanvas"
+                                        Height="164"
+                                        Background="#0F1220"/>
+                            </ScrollViewer>
+                        </Border>
+
+                        <ScrollBar x:Name="TimelineFrameScrollBar"
+                                   Grid.Row="1"
+                                   Grid.Column="0"
+                                   Grid.ColumnSpan="2"
+                                   Margin="0,10,0,0"
+                                   Minimum="1"
+                                   Maximum="250"
+                                   SmallChange="1"
+                                   LargeChange="12"
+                                   ViewportSize="1"
+                                   Orientation="Horizontal"
+                                   ValueChanged="TimelineFrameScrollBar_ValueChanged"/>
+                    </Grid>
+                </Grid>
+            </Border>
+
             <!-- ─── SIDEBAR ─── -->
-            <StackPanel Grid.Column="1" Spacing="10">
+            <ScrollViewer Grid.Row="0"
+                          Grid.RowSpan="2"
+                          Grid.Column="1"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,0,2,0">
 
                 <!-- Kamera-Auswahl -->
-                <Border Background="{StaticResource BackgroundMid}" CornerRadius="8" Padding="12">
+                <Border Background="{StaticResource BackgroundMid}" CornerRadius="8" Padding="12" Margin="0,0,0,10">
                     <StackPanel>
                         <TextBlock Text="🎥 Kamera" Foreground="{StaticResource TextPrimary}"
                                    FontWeight="Bold" FontSize="13" Margin="0,0,0,8"/>
                         <ComboBox x:Name="CameraComboBox"
-                                  Background="#2D2D44" Foreground="{StaticResource TextPrimary}"
+                                  Style="{StaticResource StudioComboBox}"
                                   FontSize="12" Margin="0,0,0,8"
                                   SelectionChanged="CameraComboBox_SelectionChanged"/>
                         <Button Content="▶ Kamera starten"
@@ -101,11 +314,46 @@
                                 x:Name="StartCameraButton"
                                 Click="StartCameraButton_Click"
                                 HorizontalAlignment="Stretch"/>
+                        <Button x:Name="OpenCameraSettingsButton"
+                                Content="Webcam-Steuerung"
+                                Style="{StaticResource StudioButton}"
+                                Margin="0,8,0,0"
+                                HorizontalAlignment="Stretch"
+                                Click="OpenCameraSettingsButton_Click"
+                                IsEnabled="False"/>
+                        <TextBlock Text="Histogramm"
+                                   Foreground="{StaticResource TextSecondary}"
+                                   FontSize="11"
+                                   Margin="0,10,0,4"/>
+                        <Border Background="#0D0D1A"
+                                BorderBrush="#2D2D44"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="6">
+                            <Grid>
+                                <Image x:Name="HistogramImage"
+                                       Height="68"
+                                       Stretch="Fill"
+                                       RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+                                <TextBlock x:Name="HistogramEmptyText"
+                                           Text="Kein Live-Bild"
+                                           Foreground="{StaticResource TextSecondary}"
+                                           FontSize="11"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                        <TextBlock x:Name="HistogramStatsText"
+                                   Text="Schwarz 0.0% | Mittel 0.0% | Weiß 0.0%"
+                                   Foreground="{StaticResource TextSecondary}"
+                                   FontSize="10"
+                                   Margin="0,6,0,0"
+                                   TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 
                 <!-- Capture Button (Haupt-Aktion) -->
-                <Border Background="{StaticResource BackgroundMid}" CornerRadius="8" Padding="12">
+                <Border Background="{StaticResource BackgroundMid}" CornerRadius="8" Padding="12" Margin="0,0,0,10">
                     <StackPanel>
                         <TextBlock Text="📸 Aufnahme" Foreground="{StaticResource TextPrimary}"
                                    FontWeight="Bold" FontSize="13" Margin="0,0,0,8"/>
@@ -126,7 +374,7 @@
                 </Border>
 
                 <!-- Onion Skin Controls -->
-                <Border Background="{StaticResource BackgroundMid}" CornerRadius="8" Padding="12">
+                <Border Background="{StaticResource BackgroundMid}" CornerRadius="8" Padding="12" Margin="0,0,0,10">
                     <StackPanel>
                         <TextBlock Text="🧅 Onion Skin" Foreground="{StaticResource TextPrimary}"
                                    FontWeight="Bold" FontSize="13" Margin="0,0,0,8"/>
@@ -137,6 +385,17 @@
                                       HorizontalAlignment="Stretch"
                                       Checked="OnionSkinToggle_Checked"
                                       Unchecked="OnionSkinToggle_Unchecked"/>
+
+                        <TextBlock Text="Layer"
+                                   Foreground="{StaticResource TextSecondary}"
+                                   FontSize="11" Margin="0,10,0,4"/>
+                        <ComboBox x:Name="OnionLayerComboBox"
+                                  Style="{StaticResource StudioComboBox}"
+                                  SelectionChanged="OnionLayerComboBox_SelectionChanged">
+                            <ComboBoxItem Content="1 Layer"/>
+                            <ComboBoxItem Content="2 Layer"/>
+                            <ComboBoxItem Content="3 Layer"/>
+                        </ComboBox>
 
                         <!-- Alpha Slider -->
                         <TextBlock x:Name="AlphaLabel"
@@ -168,7 +427,7 @@
                 </Border>
 
                 <!-- Stream Deck Status -->
-                <Border Background="{StaticResource BackgroundMid}" CornerRadius="8" Padding="12">
+                <Border Background="{StaticResource BackgroundMid}" CornerRadius="8" Padding="12" Margin="0,0,0,10">
                     <StackPanel>
                         <TextBlock Text="🎛 Stream Deck" Foreground="{StaticResource TextPrimary}"
                                    FontWeight="Bold" FontSize="13" Margin="0,0,0,8"/>
@@ -193,15 +452,104 @@
                                    Text="Kein Ordner gewählt"
                                    Foreground="{StaticResource TextSecondary}"
                                    FontSize="11" TextWrapping="Wrap"/>
+                        <TextBlock Text="Capture-Format"
+                                   Foreground="{StaticResource TextSecondary}"
+                                   FontSize="11" Margin="0,10,0,4"/>
+                        <ComboBox x:Name="CaptureFormatComboBox"
+                                  Style="{StaticResource StudioComboBox}"
+                                  SelectionChanged="CaptureFormatComboBox_SelectionChanged">
+                            <ComboBoxItem Content="JPEG Sequenz"/>
+                            <ComboBoxItem Content="TIFF + Proxy"/>
+                        </ComboBox>
+                        <TextBlock x:Name="WorkflowInfoText"
+                                   Text="Direkte JPEG-Sequenz ohne getrennte Proxy-Dateien"
+                                   Foreground="{StaticResource TextSecondary}"
+                                   FontSize="11" Margin="0,6,0,0"
+                                   TextWrapping="Wrap"/>
+                        <TextBlock Text="Shot-Name"
+                                   Foreground="{StaticResource TextSecondary}"
+                                   FontSize="11" Margin="0,10,0,4"/>
+                        <TextBox x:Name="ShotNameTextBox"
+                                 Style="{StaticResource StudioTextBox}"
+                                 Text="frame"
+                                 KeyDown="ShotNameTextBox_KeyDown"/>
+                        <TextBlock x:Name="ShotPreviewText"
+                                   Text="Nächste Datei: frame_0001.jpg"
+                                   Foreground="{StaticResource TextSecondary}"
+                                   FontSize="11" Margin="0,6,0,0"
+                                   TextWrapping="Wrap"/>
+                        <Button Content="Shot übernehmen"
+                                Style="{StaticResource StudioButton}"
+                                Margin="0,8,0,0"
+                                HorizontalAlignment="Stretch"
+                                Click="ApplyShotName_Click"/>
                         <Button Content="Ordner wählen"
                                 Style="{StaticResource StudioButton}"
                                 Margin="0,8,0,0"
                                 HorizontalAlignment="Stretch"
                                 Click="SelectFolder_Click"/>
+
+                        <Border Height="1"
+                                Background="#2D2D44"
+                                Margin="0,12,0,10"/>
+
+                        <TextBlock Text="NEF-Import"
+                                   Foreground="{StaticResource TextPrimary}"
+                                   FontWeight="Bold"
+                                   FontSize="12"/>
+                        <TextBlock x:Name="RawSdkStatusText"
+                                   Text="Nikon SDK: wird gesucht..."
+                                   Foreground="{StaticResource TextSecondary}"
+                                   FontSize="10"
+                                   Margin="0,6,0,0"
+                                   TextWrapping="Wrap"/>
+                        <TextBlock Text="RAW-Quelle"
+                                   Foreground="{StaticResource TextSecondary}"
+                                   FontSize="11" Margin="0,10,0,4"/>
+                        <TextBlock x:Name="RawSourceFolderText"
+                                   Text="Kein RAW-Ordner gewählt"
+                                   Foreground="{StaticResource TextSecondary}"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"/>
+                        <TextBlock Text="Startframe"
+                                   Foreground="{StaticResource TextSecondary}"
+                                   FontSize="11" Margin="0,10,0,4"/>
+                        <TextBox x:Name="RawFrameStartTextBox"
+                                 Style="{StaticResource StudioTextBox}"
+                                 Text="1001"
+                                 HorizontalContentAlignment="Center"
+                                 LostFocus="RawFrameStartTextBox_LostFocus"
+                                 KeyDown="RawFrameStartTextBox_KeyDown"/>
+                        <TextBlock Text="Proxy-Format"
+                                   Foreground="{StaticResource TextSecondary}"
+                                   FontSize="11" Margin="0,10,0,4"/>
+                        <ComboBox x:Name="RawProxyFormatComboBox"
+                                  Style="{StaticResource StudioComboBox}">
+                            <ComboBoxItem Content="JPG Proxy"/>
+                            <ComboBoxItem Content="PNG Proxy"/>
+                        </ComboBox>
+                        <TextBlock Text="Import: TIFF-Master in Raw/&lt;Shot&gt;, Proxy in Proxy/&lt;Shot&gt;"
+                                   Foreground="{StaticResource TextSecondary}"
+                                   FontSize="10"
+                                   Margin="0,6,0,0"
+                                   TextWrapping="Wrap"/>
+                        <Button Content="NEF-Ordner wählen"
+                                Style="{StaticResource StudioButton}"
+                                Margin="0,8,0,0"
+                                HorizontalAlignment="Stretch"
+                                Click="SelectRawSourceFolder_Click"/>
+                        <Button x:Name="ImportNefButton"
+                                Content="NEF importieren"
+                                Style="{StaticResource StudioButton}"
+                                Margin="0,8,0,0"
+                                HorizontalAlignment="Stretch"
+                                Click="ImportNefButton_Click"
+                                IsEnabled="False"/>
                     </StackPanel>
                 </Border>
 
-            </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
         </Grid>
 
         <!-- ═══════════════════════════════════════════════ -->

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Threading;
+using System.Runtime.InteropServices;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using DirectShowLib;
 
@@ -9,263 +9,323 @@ namespace OpenStopMotionStudio.Core
 {
     /// <summary>
     /// CameraManager: Verantwortlich für alles rund um die Kamera.
-    ///
-    /// Architektur-Prinzip: Dieser Manager ist der einzige Ort in der
-    /// gesamten Anwendung, der direkt mit DirectShow interagiert.
-    /// Das MainWindow weiß nichts über DirectShow – es bekommt nur
-    /// fertige BitmapSource-Objekte geliefert. Dieses Separation-of-Concerns
-    /// Prinzip macht es später einfach, DirectShow gegen ein DSLR-SDK
-    /// oder Media Foundation auszutauschen.
     /// </summary>
-    public class CameraManager : IDisposable
+    public class CameraManager : ISampleGrabberCB, IDisposable
     {
-        // ── Öffentliches Event: MainWindow abonniert dies ───────────────────
-        /// <summary>
-        /// Wird für jeden neuen Frame aufgerufen (~30fps).
-        /// Das Event liefert ein WPF-kompatibles BitmapSource-Objekt.
-        /// </summary>
         public event Action<BitmapSource>? FrameReady;
 
-        // ── Zustand ─────────────────────────────────────────────────────────
         public bool IsRunning { get; private set; }
+        public bool CanOpenDeviceSettings => _sourceFilter is ISpecifyPropertyPages;
 
-        // ── DirectShow Internals ─────────────────────────────────────────────
-        // DirectShow läuft in einem eigenen Thread, um den UI-Thread nicht zu blockieren
-        private IFilterGraph2?    _filterGraph;
-        private IMediaControl?    _mediaControl;
-        private ISampleGrabber?   _sampleGrabber;
-        private Thread?           _captureThread;
-        private bool              _stopRequested;
-        private BitmapSource?     _currentFrame;
-        private readonly object   _frameLock = new();
+        private IFilterGraph2? _filterGraph;
+        private IMediaControl? _mediaControl;
+        private ISampleGrabber? _sampleGrabber;
+        private ICaptureGraphBuilder2? _captureGraphBuilder;
+        private IBaseFilter? _sourceFilter;
+        private IBaseFilter? _grabberFilter;
+        private IBaseFilter? _nullRenderer;
+        private BitmapSource? _currentFrame;
+        private readonly object _frameLock = new();
+        private int _frameWidth;
+        private int _frameHeight;
+        private int _frameStride;
+        private bool _flipVertical;
 
-        // ════════════════════════════════════════════════════════════════════
-        //  GERÄTEERKENNUNG
-        // ════════════════════════════════════════════════════════════════════
-
-        /// <summary>
-        /// Scannt alle verfügbaren DirectShow Video Capture Devices.
-        /// Diese Methode findet USB-Webcams, HDMI-Capture-Karten und
-        /// jede Kamera, die sich als DirectShow-Device registriert.
-        ///
-        /// DSLR-Kameras (Canon EOS, Sony Alpha) werden hier NICHT gefunden –
-        /// dafür wird in Phase 2 das jeweilige Hersteller-SDK eingebunden.
-        /// </summary>
         public List<string> GetAvailableDevices()
         {
             var result = new List<string>();
 
             try
             {
-                // DirectShow: System nach Video-Capture-Devices fragen
                 var devices = DsDevice.GetDevicesOfCat(FilterCategory.VideoInputDevice);
                 foreach (var device in devices)
                     result.Add(device.Name ?? "Unbekannte Kamera");
             }
             catch (Exception ex)
             {
-                // Kein DirectShow verfügbar oder keine Kamera erkannt
                 System.Diagnostics.Debug.WriteLine($"[CameraManager] GetDevices failed: {ex.Message}");
             }
 
             return result;
         }
 
-        // ════════════════════════════════════════════════════════════════════
-        //  KAMERA STARTEN / STOPPEN
-        // ════════════════════════════════════════════════════════════════════
-
-        /// <summary>
-        /// Startet die Kamera mit dem angegebenen Geräte-Index.
-        ///
-        /// Intern wird ein DirectShow FilterGraph aufgebaut:
-        ///   Source Filter (Kamera) → SampleGrabber Filter → Null Renderer
-        /// Der SampleGrabber "schneidet" jeden Frame heraus, ohne den
-        /// Datenstrom zu unterbrechen – so bekommen wir den Live-Feed.
-        /// </summary>
         public bool Start(int deviceIndex)
         {
-            if (IsRunning) Stop();
+            Stop();
+            ReleaseGraph();
 
             try
             {
                 var devices = DsDevice.GetDevicesOfCat(FilterCategory.VideoInputDevice);
-                if (deviceIndex >= devices.Length) return false;
+                if (deviceIndex < 0 || deviceIndex >= devices.Length)
+                    return false;
 
-                // DirectShow FilterGraph aufbauen
-                _filterGraph  = (IFilterGraph2)new FilterGraph();
+                _filterGraph = (IFilterGraph2)new FilterGraph();
                 _mediaControl = (IMediaControl)_filterGraph;
+                _captureGraphBuilder = (ICaptureGraphBuilder2)new CaptureGraphBuilder2();
 
-                // 1. Source Filter: die gewählte Kamera
-                IBaseFilter sourceFilter;
-                _filterGraph.AddSourceFilterForMoniker(
-                    devices[deviceIndex].Mon, null,
-                    devices[deviceIndex].Name, out sourceFilter);
+                DsError.ThrowExceptionForHR(_captureGraphBuilder.SetFiltergraph(_filterGraph));
 
-                // 2. SampleGrabber: Frame-Extraktion
+                DsError.ThrowExceptionForHR(_filterGraph.AddSourceFilterForMoniker(
+                    devices[deviceIndex].Mon,
+                    null,
+                    devices[deviceIndex].Name,
+                    out _sourceFilter!));
+
                 _sampleGrabber = (ISampleGrabber)new SampleGrabber();
-                var grabberFilter = (IBaseFilter)_sampleGrabber;
-                _filterGraph.AddFilter(grabberFilter, "Sample Grabber");
+                _grabberFilter = (IBaseFilter)_sampleGrabber;
+                DsError.ThrowExceptionForHR(_filterGraph.AddFilter(_grabberFilter, "Sample Grabber"));
 
-                // RGB24 Mediatype setzen: liefert einfach zu verarbeitende Bitmaps
                 var mediaType = new AMMediaType
                 {
-                    majorType  = MediaType.Video,
-                    subType    = MediaSubType.RGB24,
+                    majorType = MediaType.Video,
+                    subType = MediaSubType.RGB24,
                     formatType = FormatType.VideoInfo
                 };
-                _sampleGrabber.SetMediaType(mediaType);
-                _sampleGrabber.SetBufferSamples(true);
 
-                // 3. Null Renderer: DirectShow braucht ein Sink-Filter
-                IBaseFilter nullRenderer = (IBaseFilter)new NullRenderer();
-                _filterGraph.AddFilter(nullRenderer, "Null Renderer");
-
-                // Pins verbinden: Source → Grabber → NullRenderer
-                var captureGraphBuilder = (ICaptureGraphBuilder2)new CaptureGraphBuilder2();
-                captureGraphBuilder.SetFiltergraph(_filterGraph);
-                captureGraphBuilder.RenderStream(PinCategory.Capture, MediaType.Video,
-                    sourceFilter, grabberFilter, nullRenderer);
-
-                // MediaControl startet den Datenstrom
-                _mediaControl.Run();
-                IsRunning     = true;
-                _stopRequested = false;
-
-                // Separater Thread: Frame-Polling ohne UI-Thread zu blockieren
-                _captureThread = new Thread(FramePollingLoop)
+                try
                 {
-                    IsBackground = true,
-                    Name = "CameraFramePoller"
-                };
-                _captureThread.Start();
+                    DsError.ThrowExceptionForHR(_sampleGrabber.SetMediaType(mediaType));
+                }
+                finally
+                {
+                    DsUtils.FreeAMMediaType(mediaType);
+                }
 
+                DsError.ThrowExceptionForHR(_sampleGrabber.SetOneShot(false));
+                DsError.ThrowExceptionForHR(_sampleGrabber.SetBufferSamples(false));
+                DsError.ThrowExceptionForHR(_sampleGrabber.SetCallback(this, 1));
+
+                _nullRenderer = (IBaseFilter)new NullRenderer();
+                DsError.ThrowExceptionForHR(_filterGraph.AddFilter(_nullRenderer, "Null Renderer"));
+
+                DsError.ThrowExceptionForHR(_captureGraphBuilder.RenderStream(
+                    PinCategory.Capture,
+                    MediaType.Video,
+                    _sourceFilter,
+                    _grabberFilter,
+                    _nullRenderer));
+
+                ReadConnectedMediaType();
+                DsError.ThrowExceptionForHR(_mediaControl.Run());
+
+                IsRunning = true;
                 return true;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[CameraManager] Start failed: {ex.Message}");
+                Stop();
+                ReleaseGraph();
                 return false;
             }
         }
 
-        /// <summary>
-        /// Polling-Schleife im Hintergrund-Thread: zieht kontinuierlich
-        /// Frames vom SampleGrabber und konvertiert sie in BitmapSource.
-        /// ~30fps entspricht einem Polling-Intervall von 33ms.
-        /// </summary>
-        private void FramePollingLoop()
+        private void ReadConnectedMediaType()
         {
-            while (!_stopRequested && _sampleGrabber != null)
-            {
-                try
-                {
-                    var frame = GrabCurrentFrame();
-                    if (frame != null)
-                    {
-                        lock (_frameLock)
-                            _currentFrame = frame;
+            if (_sampleGrabber == null)
+                throw new InvalidOperationException("SampleGrabber ist nicht initialisiert.");
 
-                        // Event feuern → MainWindow rendert das Bild
-                        FrameReady?.Invoke(frame);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[CameraManager] Frame grab error: {ex.Message}");
-                }
-
-                Thread.Sleep(33); // ~30fps
-            }
-        }
-
-        /// <summary>
-        /// Holt einen einzelnen Frame vom SampleGrabber, konvertiert ihn
-        /// von raw RGB24-Bytes in ein WPF-kompatibles BitmapSource.
-        /// </summary>
-        private BitmapSource? GrabCurrentFrame()
-        {
-            if (_sampleGrabber == null) return null;
-
-            // Schritt 1: Buffer-Größe ermitteln
-            int bufferSize = 0;
-            _sampleGrabber.GetCurrentBuffer(ref bufferSize, IntPtr.Zero);
-            if (bufferSize == 0) return null;
-
-            // Schritt 2: Buffer befüllen
-            var buffer = new byte[bufferSize];
-            var handle = System.Runtime.InteropServices.GCHandle.Alloc(buffer,
-                System.Runtime.InteropServices.GCHandleType.Pinned);
+            var mediaType = new AMMediaType();
 
             try
             {
-                _sampleGrabber.GetCurrentBuffer(ref bufferSize, handle.AddrOfPinnedObject());
+                DsError.ThrowExceptionForHR(_sampleGrabber.GetConnectedMediaType(mediaType));
 
-                // Schritt 3: DirectShow Media-Typ auslesen für Auflösung
-                var mediaType = new AMMediaType();
-                _sampleGrabber.GetConnectedMediaType(mediaType);
-                var videoInfo = (VideoInfoHeader)System.Runtime.InteropServices.Marshal.PtrToStructure(
-                    mediaType.formatPtr, typeof(VideoInfoHeader))!;
+                if (mediaType.formatPtr == IntPtr.Zero || mediaType.formatType != FormatType.VideoInfo)
+                    throw new InvalidOperationException("Unerwartetes Videoformat vom Kameratreiber.");
 
-                int width  = videoInfo.BmiHeader.Width;
-                int height = Math.Abs(videoInfo.BmiHeader.Height);
+                var videoInfo = Marshal.PtrToStructure<VideoInfoHeader>(mediaType.formatPtr)
+                    ?? throw new InvalidOperationException("Konnte VideoInfoHeader nicht lesen.");
+                _frameWidth = videoInfo.BmiHeader.Width;
+                _frameHeight = Math.Abs(videoInfo.BmiHeader.Height);
+                _flipVertical = videoInfo.BmiHeader.Height > 0;
 
-                // Schritt 4: RGB24-Buffer → WPF BitmapSource
-                // DirectShow liefert das Bild vertikal gespiegelt (bottom-up) → Flip nötig
-                var bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
-                var bitmapData = bitmap.LockBits(
-                    new System.Drawing.Rectangle(0, 0, width, height),
-                    System.Drawing.Imaging.ImageLockMode.WriteOnly,
-                    System.Drawing.Imaging.PixelFormat.Format24bppRgb);
-
-                System.Runtime.InteropServices.Marshal.Copy(buffer, 0, bitmapData.Scan0, bufferSize);
-                bitmap.UnlockBits(bitmapData);
-                bitmap.RotateFlip(System.Drawing.RotateFlipType.RotateNoneFlipY);
-
-                // Schritt 5: System.Drawing.Bitmap → WPF BitmapSource konvertieren
-                using var memStream = new System.IO.MemoryStream();
-                bitmap.Save(memStream, System.Drawing.Imaging.ImageFormat.Bmp);
-                memStream.Seek(0, System.IO.SeekOrigin.Begin);
-
-                var bitmapImage = new BitmapImage();
-                bitmapImage.BeginInit();
-                bitmapImage.CacheOption  = BitmapCacheOption.OnLoad;
-                bitmapImage.StreamSource = memStream;
-                bitmapImage.EndInit();
-                bitmapImage.Freeze(); // Freeze: thread-sicher für UI-Thread
-
-                return bitmapImage;
+                int bitsPerPixel = Math.Max(videoInfo.BmiHeader.BitCount, (short)24);
+                int calculatedStride = ((_frameWidth * bitsPerPixel + 31) / 32) * 4;
+                _frameStride = videoInfo.BmiHeader.ImageSize > 0 && _frameHeight > 0
+                    ? videoInfo.BmiHeader.ImageSize / _frameHeight
+                    : calculatedStride;
             }
             finally
             {
-                handle.Free();
+                DsUtils.FreeAMMediaType(mediaType);
             }
+        }
+
+        public int SampleCB(double sampleTime, IMediaSample mediaSample) => 0;
+
+        public int BufferCB(double sampleTime, IntPtr buffer, int bufferLen)
+        {
+            if (!IsRunning || buffer == IntPtr.Zero || bufferLen <= 0 || _frameWidth <= 0 || _frameHeight <= 0)
+                return 0;
+
+            try
+            {
+                var sourceStride = _frameStride > 0 ? _frameStride : Math.Max(bufferLen / _frameHeight, _frameWidth * 3);
+                var sourceBuffer = new byte[bufferLen];
+                Marshal.Copy(buffer, sourceBuffer, 0, bufferLen);
+
+                byte[] normalizedBuffer;
+                if (_flipVertical)
+                {
+                    normalizedBuffer = new byte[bufferLen];
+
+                    for (int y = 0; y < _frameHeight; y++)
+                    {
+                        int sourceOffset = y * sourceStride;
+                        int targetOffset = (_frameHeight - 1 - y) * sourceStride;
+                        Buffer.BlockCopy(sourceBuffer, sourceOffset, normalizedBuffer, targetOffset, sourceStride);
+                    }
+                }
+                else
+                {
+                    normalizedBuffer = sourceBuffer;
+                }
+
+                var frame = BitmapSource.Create(
+                    _frameWidth,
+                    _frameHeight,
+                    96,
+                    96,
+                    PixelFormats.Bgr24,
+                    null,
+                    normalizedBuffer,
+                    sourceStride);
+                frame.Freeze();
+
+                lock (_frameLock)
+                    _currentFrame = frame;
+
+                FrameReady?.Invoke(frame);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CameraManager] Buffer callback failed: {ex.Message}");
+            }
+
+            return 0;
         }
 
         public void Stop()
         {
-            _stopRequested = true;
-            _mediaControl?.Stop();
             IsRunning = false;
+
+            try
+            {
+                _mediaControl?.Stop();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CameraManager] Stop failed: {ex.Message}");
+            }
+
+            lock (_frameLock)
+                _currentFrame = null;
         }
 
-        /// <summary>
-        /// Gibt den zuletzt gecapturten Frame zurück – wird vom
-        /// CaptureManager beim Speichern verwendet.
-        /// Thread-sicher durch Lock.
-        /// </summary>
         public BitmapSource? GetCurrentFrame()
         {
             lock (_frameLock)
                 return _currentFrame;
         }
 
+        public bool OpenDeviceSettings(IntPtr ownerWindowHandle)
+        {
+            if (_sourceFilter is not ISpecifyPropertyPages propertyPages)
+                return false;
+
+            DsCAUUID pageCollection = new();
+
+            try
+            {
+                DsError.ThrowExceptionForHR(propertyPages.GetPages(out pageCollection));
+                Guid[] pageIds = pageCollection.ToGuidArray();
+                if (pageIds.Length == 0)
+                    return false;
+
+                object cameraSource = _sourceFilter;
+                int hr = OleCreatePropertyFrame(
+                    ownerWindowHandle,
+                    0,
+                    0,
+                    "Kameraeinstellungen",
+                    1,
+                    ref cameraSource,
+                    pageIds.Length,
+                    pageIds,
+                    0,
+                    0,
+                    IntPtr.Zero);
+
+                return hr >= 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CameraManager] OpenDeviceSettings failed: {ex.Message}");
+                return false;
+            }
+            finally
+            {
+                if (pageCollection.pElems != IntPtr.Zero)
+                    Marshal.FreeCoTaskMem(pageCollection.pElems);
+            }
+        }
+
         public void Dispose()
         {
             Stop();
-            // COM-Objekte freigeben (DirectShow ist COM-basiert)
-            if (_filterGraph != null)
-                System.Runtime.InteropServices.Marshal.ReleaseComObject(_filterGraph);
+            ReleaseGraph();
         }
+
+        private void ReleaseGraph()
+        {
+            ReleaseComObject(ref _nullRenderer);
+            ReleaseComObject(ref _grabberFilter);
+            ReleaseComObject(ref _sourceFilter);
+            ReleaseComObject(ref _captureGraphBuilder);
+            ReleaseComObject(ref _sampleGrabber);
+            ReleaseComObject(ref _mediaControl);
+            ReleaseComObject(ref _filterGraph);
+
+            _frameWidth = 0;
+            _frameHeight = 0;
+            _frameStride = 0;
+            _flipVertical = false;
+        }
+
+        private static void ReleaseComObject<T>(ref T? comObject) where T : class
+        {
+            if (comObject == null)
+                return;
+
+            try
+            {
+                if (Marshal.IsComObject(comObject))
+                    Marshal.ReleaseComObject(comObject);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CameraManager] ReleaseComObject failed: {ex.Message}");
+            }
+            finally
+            {
+                comObject = null;
+            }
+        }
+
+        [DllImport("oleaut32.dll", CharSet = CharSet.Unicode)]
+        private static extern int OleCreatePropertyFrame(
+            IntPtr hwndOwner,
+            int x,
+            int y,
+            string lpszCaption,
+            int cObjects,
+            [MarshalAs(UnmanagedType.Interface)] ref object ppUnk,
+            int cPages,
+            [MarshalAs(UnmanagedType.LPArray)] Guid[] pPageClsID,
+            int lcid,
+            int dwReserved,
+            IntPtr pvReserved);
     }
 }

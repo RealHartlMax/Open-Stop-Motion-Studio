@@ -1,5 +1,7 @@
 using System;
 using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
 using OpenMacroBoard.SDK;
 using StreamDeckSharp;
 
@@ -49,7 +51,7 @@ namespace OpenStopMotionStudio.Core
         {
             try
             {
-                IStreamDeckDeviceReference? firstDevice = null;
+                StreamDeckDeviceReference? firstDevice = null;
 
                 foreach (var device in StreamDeck.EnumerateDevices())
                 {
@@ -134,21 +136,25 @@ namespace OpenStopMotionStudio.Core
 
             try
             {
-                int size = _deck.Keys.KeySize.Width;
+                int size = _deck.Keys.KeySize;
 
                 using var bmp = new Bitmap(size, size);
                 using var gfx = Graphics.FromImage(bmp);
                 gfx.Clear(Color.FromArgb(r, g, b));
 
                 using var font  = new Font("Arial", size * 0.14f, FontStyle.Bold);
-                using var brush = Brushes.White;
+                using var brush = new SolidBrush(Color.White);
 
                 var textSize = gfx.MeasureString(label, font);
                 gfx.DrawString(label, font, brush,
                     (size - textSize.Width)  / 2,
                     (size - textSize.Height) / 2);
 
-                _deck.SetKeyBitmap(buttonIndex, KeyBitmap.Create.FromBitmap(bmp));
+                using var imageStream = new MemoryStream();
+                bmp.Save(imageStream, ImageFormat.Png);
+                imageStream.Position = 0;
+
+                _deck.SetKeyBitmap(buttonIndex, KeyBitmap.Create.FromStream(imageStream));
             }
             catch (Exception ex)
             {
