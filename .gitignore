@@ -8,6 +8,8 @@ obj/
 .zenflow/
 *.user
 *.suo
+*.zip
+publish-folder/
 implementation/
 GEMINI.md
 logs/
