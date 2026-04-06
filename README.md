@@ -75,6 +75,28 @@ It is not yet a full replacement for tools like Dragonframe. Features such as EX
 2. Restore NuGet packages.
 3. Start the project with `F5`.
 
+### Option 3: Building and Running on Linux/macOS
+
+1.  **Install the .NET 10 SDK.**
+2.  Make the `build.sh` script executable:
+    ```bash
+    chmod +x build.sh
+    ```
+3.  Build the application for your desired platform (Linux, Intel Mac, or Apple Silicon Mac) by running the `build.sh` script with the target version:
+    ```bash
+    ./build.sh 0.1.1
+    ```
+    This will generate `.tar.gz` archives (e.g., `OSMS-linux-x64-v0.1.1.tar.gz`) in the root directory.
+4.  Extract the desired `.tar.gz` archive.
+5.  Place the `start.sh` script (also made executable with `chmod +x start.sh`) inside the root of the extracted application folder (next to the `OpenStopMotionStudio` executable).
+6.  Run the application:
+    ```bash
+    ./start.sh
+    ```
+7.  Select a camera and click `Start Camera`.
+8.  Press `Space` to capture a frame.
+
+
 ## Requirements
 
 - **Windows**: Windows 10 or 11
@@ -199,6 +221,28 @@ Es ist noch kein vollständiger Ersatz für Werkzeuge wie Dragonframe. Funktione
 1. [`Open-Stop-Motion-Studio.sln`](Open-Stop-Motion-Studio.sln) öffnen.
 2. NuGet-Pakete wiederherstellen.
 3. Das Projekt mit `F5` starten.
+
+### Option 3: Kompilieren und Ausführen unter Linux/macOS
+
+1.  **Das .NET 10 SDK installieren.**
+2.  Machen Sie das `build.sh`-Skript ausführbar:
+    ```bash
+    chmod +x build.sh
+    ```
+3.  Kompilieren Sie die Anwendung für Ihre gewünschte Plattform (Linux, Intel Mac oder Apple Silicon Mac), indem Sie das `build.sh`-Skript mit der Zielversion ausführen:
+    ```bash
+    ./build.sh 0.1.1
+    ```
+    Dies erstellt `.tar.gz`-Archive (z.B. `OSMS-linux-x64-v0.1.1.tar.gz`) im Stammverzeichnis des Projekts.
+4.  Extrahieren Sie das gewünschte `.tar.gz`-Archiv.
+5.  Legen Sie das `start.sh`-Skript (ebenfalls mit `chmod +x start.sh` ausführbar gemacht) im Stammverzeichnis des entpackten Anwendungsordners ab (neben der ausführbaren Datei `OpenStopMotionStudio`).
+6.  Führen Sie die Anwendung aus:
+    ```bash
+    ./start.sh
+    ```
+7.  Wählen Sie eine Kamera aus und klicken Sie auf `Kamera starten`.
+8.  Drücken Sie die `Leertaste`, um ein Frame aufzunehmen.
+
 
 ## Voraussetzungen
 
