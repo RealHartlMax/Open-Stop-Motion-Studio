@@ -1,0 +1,63 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:OpenStopMotionStudio.GUI"
+        x:Class="OpenStopMotionStudio.GUI.ProjectWindow"
+        Title="Projekt-Browser"
+        Background="#1E1E1E" Width="1024" Height="768">
+
+    <Grid RowDefinitions="60, *, 60">
+        
+        <Border Grid.Row="0" BorderBrush="#333333" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto, *, Auto" Margin="20,0">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="20" VerticalAlignment="Center">
+                    <RadioButton Content="Lokal" Classes="NavTab" IsChecked="True"/>
+                    <RadioButton Content="Netzwerk" Classes="NavTab"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+                    <!-- Placeholder for Logo -->
+                    <TextBlock Text="Open Stop Motion Studio" Foreground="White" FontWeight="Bold" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
+                    <Slider Width="100" Minimum="0.5" Maximum="1.5" Value="1" />
+                    <TextBox Watermark="Suchen..." Width="150" Classes="SearchBox"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" Margin="20">
+            <ListBox ItemsSource="{Binding Projects}" 
+                     SelectedItem="{Binding SelectedProject}"
+                     Background="Transparent"
+                     BorderThickness="0">
+                
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel ItemWidth="240" ItemHeight="180" />
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <local:ProjectTileControl />
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </ScrollViewer>
+
+        <Border Grid.Row="2" BorderBrush="#333333" BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*, *" Margin="20,0" VerticalAlignment="Center">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
+                    <Button Content="Exportieren" Classes="OutlineButton"/>
+                    <Button Content="Importieren" Classes="OutlineButton"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                    <Button x:Name="NewProjectButton" Content="Neues Projekt" Classes="OutlineButton"/>
+                    <Button x:Name="OpenProjectButton" Content="Öffnen" Classes="OutlineButton Primary"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

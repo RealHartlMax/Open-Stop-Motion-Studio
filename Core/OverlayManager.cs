@@ -38,6 +38,36 @@ namespace OpenStopMotionStudio.Core
         /// </summary>
         public double AlphaValue { get; set; } = 0.4;
 
+        // ── Grid Overlay ─────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Zeigt ein Gitter-Overlay für die Bildkomposition an.
+        /// Hilft bei der Ausrichtung von Objekten (Regel der Drittel, etc.).
+        /// </summary>
+        public bool ShowGrid { get; set; } = false;
+
+        /// <summary>
+        /// Grid-Typ: 0 = Regel der Drittel (3x3), 1 = Quadrate (4x4), 2 = Center-Cross
+        /// </summary>
+        public int GridType { get; set; } = 0; // 0 = Drittel (3x3 Gitter)
+
+        // ── Action Safe Overlay ──────────────────────────────────────────────
+
+        /// <summary>
+        /// Zeigt die Action Safe Zone an (90% des Bildes).
+        /// In diesem Bereich sollte die wichtige Aktion stattfinden,
+        /// um auf verschiedenen Bildschirmen sichtbar zu sein.
+        /// </summary>
+        public bool ShowActionSafe { get; set; } = false;
+
+        // ── Title Safe Overlay ───────────────────────────────────────────────
+
+        /// <summary>
+        /// Zeigt die Title Safe Zone an (80% des Bildes).
+        /// In diesem Bereich sollten Text, Titel und wichtige Elemente platziert sein.
+        /// </summary>
+        public bool ShowTitleSafe { get; set; } = false;
+
         // ── Zukünftige Erweiterung: Multi-Onion-Skin ────────────────────────
 
         /// <summary>
@@ -52,6 +82,14 @@ namespace OpenStopMotionStudio.Core
         /// MVP: immer false. Phase 3: konfigurierbar.
         /// </summary>
         public bool ColorCodedMode { get; set; } = false;
+
+        // ── Auflösungs-Tracking ──────────────────────────────────────────────
+
+        /// <summary>
+        /// Die aktuelle Auflösung des Live-Bildes (Breite x Höhe).
+        /// Wird vom MainWindow aktualisiert wenn die Kamera oder das Format wechseln.
+        /// </summary>
+        public CameraResolution CurrentResolution { get; set; } = new(0, 0);
 
         // ── Hilfsmethode: Alpha für einen Layer berechnen ───────────────────
 

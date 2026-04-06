@@ -1,11 +1,12 @@
+using Avalonia;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace OpenStopMotionStudio.Core
 {
@@ -48,9 +49,10 @@ namespace OpenStopMotionStudio.Core
 
             string shotName = CaptureManager.NormalizeShotName(settings.ShotName);
             int frameStart = Math.Max(1, settings.FrameStart);
-            string masterFolder = Path.Combine(settings.ProjectFolder, "Raw", shotName);
-            string proxyFolder = Path.Combine(settings.ProjectFolder, "Proxy", shotName);
-
+            
+            // Get folders and ensure they exist
+            string masterFolder = ProjectPaths.GetOriginalsFolder(settings.ProjectFolder, shotName, ".png");
+            string proxyFolder = ProjectPaths.GetProxyFolder(settings.ProjectFolder, shotName);
             Directory.CreateDirectory(masterFolder);
             Directory.CreateDirectory(proxyFolder);
 
@@ -64,8 +66,8 @@ namespace OpenStopMotionStudio.Core
 
                 progress?.Report(new NefImportProgress(i + 1, sourceFiles.Count, Path.GetFileName(sourcePath)));
 
-                string masterPath = Path.Combine(masterFolder, $"{shotName}_{frameNumber:D4}.tif");
-                string proxyPath = Path.Combine(proxyFolder, $"{shotName}_{frameNumber:D4}{GetProxyExtension(settings.ProxyFormat)}");
+                string masterPath = ProjectPaths.BuildOriginalPath(settings.ProjectFolder, shotName, frameNumber, ".png");
+                string proxyPath = ProjectPaths.BuildProxyPath(settings.ProjectFolder, shotName, frameNumber);
 
                 ImportedFrameData imported = sdk.ImportFile(sourcePath, masterPath, proxyPath, settings);
                 importedFrames.Add(new CapturedFrame(frameNumber, shotName, imported.MasterPath, imported.ProxyPath, imported.PreviewFrame));
@@ -92,7 +94,7 @@ namespace OpenStopMotionStudio.Core
 
         private sealed class ImportedFrameData
         {
-            public ImportedFrameData(string masterPath, string proxyPath, BitmapSource previewFrame)
+            public ImportedFrameData(string masterPath, string proxyPath, Bitmap previewFrame)
             {
                 MasterPath = masterPath;
                 ProxyPath = proxyPath;
@@ -101,7 +103,7 @@ namespace OpenStopMotionStudio.Core
 
             public string MasterPath { get; }
             public string ProxyPath { get; }
-            public BitmapSource PreviewFrame { get; }
+            public Bitmap PreviewFrame { get; }
         }
 
         private sealed class NikonImageSdkRuntime : IDisposable
@@ -164,8 +166,8 @@ namespace OpenStopMotionStudio.Core
                         throw new InvalidOperationException($"Nicht unterstützte Byte-Tiefe {imageInfo.ulByteDepth} in {Path.GetFileName(sourcePath)}.");
 
                     byte[] rawBuffer = GetImageData(sessionId, imageInfo);
-                    BitmapSource masterBitmap = CreateBitmapSource(imageInfo, rawBuffer);
-                    BitmapSource proxyBitmap = CreateProxyBitmap(masterBitmap);
+                    Bitmap masterBitmap = CreateBitmap(imageInfo, rawBuffer);
+                    Bitmap proxyBitmap = CreateProxyBitmap(masterBitmap);
 
                     SaveMaster(masterBitmap, masterPath);
                     SaveProxy(proxyBitmap, proxyPath, settings);
@@ -368,65 +370,70 @@ namespace OpenStopMotionStudio.Core
                 return buffer;
             }
 
-            private static BitmapSource CreateBitmapSource(NkflImageInfoParam imageInfo, byte[] rawBuffer)
+            private static unsafe Bitmap CreateBitmap(NkflImageInfoParam imageInfo, byte[] rawBuffer)
             {
                 int width = checked((int)imageInfo.ulWidth);
                 int height = checked((int)imageInfo.ulHeight);
                 int byteDepth = checked((int)imageInfo.ulByteDepth);
-                int stride = checked(width * 3 * byteDepth);
-                PixelFormat format = byteDepth == 2 ? PixelFormats.Rgb48 : PixelFormats.Rgb24;
+                
+                var format = global::Avalonia.Platform.PixelFormat.Rgba8888;
+                int stride = width * 4;
+                byte[] convertedBuffer = new byte[height * stride];
 
-                BitmapSource bitmap = BitmapSource.Create(
-                    width,
-                    height,
-                    72,
-                    72,
-                    format,
-                    null,
-                    rawBuffer,
-                    stride);
+                if (byteDepth == 2) // 48bpp -> 32bpp RGBA
+                {
+                    for (int i = 0; i < width * height; i++)
+                    {
+                        convertedBuffer[i * 4 + 0] = rawBuffer[i * 6 + 1]; // R (high byte)
+                        convertedBuffer[i * 4 + 1] = rawBuffer[i * 6 + 3]; // G (high byte)
+                        convertedBuffer[i * 4 + 2] = rawBuffer[i * 6 + 5]; // B (high byte)
+                        convertedBuffer[i * 4 + 3] = 255;                  // A
+                    }
+                }
+                else // 24bpp -> 32bpp RGBA
+                {
+                    for (int i = 0; i < width * height; i++)
+                    {
+                        convertedBuffer[i * 4 + 0] = rawBuffer[i * 3 + 0]; // R
+                        convertedBuffer[i * 4 + 1] = rawBuffer[i * 3 + 1]; // G
+                        convertedBuffer[i * 4 + 2] = rawBuffer[i * 3 + 2]; // B
+                        convertedBuffer[i * 4 + 3] = 255;                  // A
+                    }
+                }
+                
+                var dpi = new Vector(72, 72);
+                var bitmap = new WriteableBitmap(new PixelSize(width, height), dpi, format, AlphaFormat.Unpremul);
+                
+                using (var lockedBitmap = bitmap.Lock())
+                {
+                    Marshal.Copy(convertedBuffer, 0, lockedBitmap.Address, convertedBuffer.Length);
+                }
 
-                bitmap.Freeze();
                 return bitmap;
             }
 
-            private static BitmapSource CreateProxyBitmap(BitmapSource masterBitmap)
+            private static Bitmap CreateProxyBitmap(Bitmap masterBitmap)
             {
-                if (masterBitmap.Format == PixelFormats.Rgb24)
-                    return masterBitmap;
-
-                FormatConvertedBitmap converted = new();
-                converted.BeginInit();
-                converted.Source = masterBitmap;
-                converted.DestinationFormat = PixelFormats.Rgb24;
-                converted.EndInit();
-                converted.Freeze();
-                return converted;
+                // Already in a usable format from CreateBitmap
+                return masterBitmap;
             }
 
-            private static void SaveMaster(BitmapSource masterBitmap, string masterPath)
+            private static void SaveMaster(Bitmap masterBitmap, string masterPath)
             {
-                TiffBitmapEncoder encoder = new()
-                {
-                    Compression = TiffCompressOption.Zip
-                };
-
-                encoder.Frames.Add(BitmapFrame.Create(masterBitmap));
-                using FileStream fileStream = new(masterPath, FileMode.Create, FileAccess.Write);
-                encoder.Save(fileStream);
+                masterBitmap.Save(masterPath);
             }
 
-            private static void SaveProxy(BitmapSource proxyBitmap, string proxyPath, NefImportSettings settings)
+            private static void SaveProxy(Bitmap proxyBitmap, string proxyPath, NefImportSettings settings)
             {
-                BitmapEncoder encoder = settings.ProxyFormat switch
+                if (settings.ProxyFormat == RawImportProxyFormat.Png)
                 {
-                    RawImportProxyFormat.Png => new PngBitmapEncoder(),
-                    _ => new JpegBitmapEncoder { QualityLevel = Math.Clamp(settings.JpegQuality, 1, 100) }
-                };
-
-                encoder.Frames.Add(BitmapFrame.Create(proxyBitmap));
-                using FileStream fileStream = new(proxyPath, FileMode.Create, FileAccess.Write);
-                encoder.Save(fileStream);
+                    proxyBitmap.Save(proxyPath);
+                }
+                else
+                {
+                    using var fileStream = new FileStream(proxyPath, FileMode.Create, FileAccess.Write);
+                    proxyBitmap.Save(fileStream, Math.Clamp(settings.JpegQuality, 1, 100));
+                }
             }
 
             [DllImport("kernel32", CharSet = CharSet.Ansi, SetLastError = true)]

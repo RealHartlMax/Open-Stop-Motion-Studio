@@ -1,0 +1,22 @@
+name: ❓ Question
+description: Ask a question about the project
+title: "[QUESTION]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ask anything related to Open Stop Motion Studio.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What are you trying to achieve?

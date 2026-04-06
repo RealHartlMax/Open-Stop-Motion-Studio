@@ -1,0 +1,52 @@
+name: 💡 Feature Request
+description: Suggest a new feature or improvement
+title: "[FEATURE]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Got an idea? Let’s build it 🚀
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Use Case
+      description: What problem does this solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: What should be implemented?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Area
+      options:
+        - Camera / DSLR
+        - UI / UX
+        - Onion Skin
+        - Performance
+        - Cross-Platform
+        - Motion Control
+        - Lighting / DMX
+        - Stream Deck
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context

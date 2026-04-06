@@ -1,0 +1,47 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:gui="clr-namespace:OpenStopMotionStudio.GUI"
+        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="200"
+        x:Class="OpenStopMotionStudio.GUI.SplashWindow"
+        Title="Open Stop Motion Studio"
+        SystemDecorations="None"
+        WindowStartupLocation="CenterScreen"
+        Width="400" Height="200"
+        CanResize="False">
+
+    <Design.DataContext>
+        <gui:SplashViewModel/>
+    </Design.DataContext>
+    
+    <Grid>
+        <Image Source="avares://OpenStopMotionStudio/Assets/splash_background.png"
+               Stretch="UniformToFill"/>
+
+        <Border Background="#80000000">
+            <Grid RowDefinitions="*,Auto,Auto,*" ColumnDefinitions="*">
+
+                <TextBlock Grid.Row="0"
+                           Text="Open Stop Motion Studio" 
+                           VerticalAlignment="Bottom" 
+                           HorizontalAlignment="Center"
+                           FontSize="20"
+                           FontWeight="Bold"
+                           Foreground="White"
+                           Margin="0,0,0,10"/>
+
+                <ProgressBar Grid.Row="1" 
+                             IsIndeterminate="True" 
+                             Margin="20,10"/>
+
+                <TextBlock Grid.Row="2"
+                           Text="{Binding Status}" 
+                           VerticalAlignment="Top"
+                           HorizontalAlignment="Center"
+                           Foreground="White"
+                           Margin="20,10"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

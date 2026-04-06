@@ -7,6 +7,7 @@ Struktur:
 
 - `SDKs/Nikon/`
 - `SDKs/Canon/`
+- `SDKs/Sony/`
 
 Wichtig:
 

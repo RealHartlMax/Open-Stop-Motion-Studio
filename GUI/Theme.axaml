@@ -1,0 +1,67 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style Selector="ListBoxItem">
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="ListBoxItem:selected Border.TileBorder">
+        <Setter Property="BorderBrush" Value="#E53935"/>
+        <Setter Property="BorderThickness" Value="2"/>
+    </Style>
+
+    <Style Selector="ListBoxItem:selected TextBlock.TileText">
+        <Setter Property="Foreground" Value="#E53935"/>
+    </Style>
+
+    <Style Selector="TextBlock.TileText">
+        <Setter Property="Foreground" Value="#CCCCCC"/>
+    </Style>
+
+    <Style Selector="PathIcon.SelectionCheckmark">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+
+    <Style Selector="ListBoxItem:selected PathIcon.SelectionCheckmark">
+        <Setter Property="IsVisible" Value="True"/>
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+    
+    <Style Selector="Button.OutlineButton">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="#555555"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="20"/>
+        <Setter Property="Foreground" Value="#CCCCCC"/>
+        <Setter Property="Padding" Value="20,8"/>
+    </Style>
+
+    <Style Selector="Button.OutlineButton.Primary">
+        <Setter Property="BorderBrush" Value="#E53935"/>
+    </Style>
+
+    <Style Selector="RadioButton.NavTab">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="#AAAAAA"/>
+        <Setter Property="BorderThickness" Value="0,0,0,2"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Padding" Value="5"/>
+    </Style>
+    
+    <Style Selector="RadioButton.NavTab:checked">
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="BorderBrush" Value="#E53935"/>
+    </Style>
+
+    <Style Selector="TextBox.SearchBox">
+        <Setter Property="Background" Value="#2A2A2A"/>
+        <Setter Property="Foreground" Value="#CCCCCC"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="15"/>
+        <Setter Property="Padding" Value="10,5"/>
+    </Style>
+</Styles>

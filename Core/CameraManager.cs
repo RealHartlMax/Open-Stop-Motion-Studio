@@ -1,331 +1,204 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using DirectShowLib;
+using System.IO;
+using Avalonia.Media.Imaging;
 
 namespace OpenStopMotionStudio.Core
 {
     /// <summary>
-    /// CameraManager: Verantwortlich für alles rund um die Kamera.
+    /// CameraManager: Verwaltet die Verbindung zu einem Kamera-Adapter und stellt
+    /// die Live-View- sowie Capture-Schnittstelle bereit.
     /// </summary>
-    public class CameraManager : ISampleGrabberCB, IDisposable
+    public class CameraManager : IDisposable
     {
-        public event Action<BitmapSource>? FrameReady;
+        public static CameraManager Instance { get; } = new CameraManager();
+
+        public event Action<Bitmap>? FrameReady;
+        public event Action<string>? ImageCaptured;
+        public event Action<string>? StatusChanged;
 
         public bool IsRunning { get; private set; }
-        public bool CanOpenDeviceSettings => _sourceFilter is ISpecifyPropertyPages;
+        public string? LastStatusMessage { get; private set; }
+        public CameraResolution? RequestedResolution { get; private set; }
+        public CameraConnectionKind? CurrentConnectionKind { get; private set; }
+        public bool UsesHardwareStillCapture => _adapter?.UsesSdkStillCapture == true;
 
-        private IFilterGraph2? _filterGraph;
-        private IMediaControl? _mediaControl;
-        private ISampleGrabber? _sampleGrabber;
-        private ICaptureGraphBuilder2? _captureGraphBuilder;
-        private IBaseFilter? _sourceFilter;
-        private IBaseFilter? _grabberFilter;
-        private IBaseFilter? _nullRenderer;
-        private BitmapSource? _currentFrame;
-        private readonly object _frameLock = new();
-        private int _frameWidth;
-        private int _frameHeight;
-        private int _frameStride;
-        private bool _flipVertical;
+        private ICameraAdapter? _adapter;
+        private readonly List<CameraDeviceDescriptor> _deviceDescriptors = new();
+        private Bitmap? _currentFrame;
+        private bool _isStopping;
 
-        public List<string> GetAvailableDevices()
+        private CameraManager()
         {
-            var result = new List<string>();
-
-            try
-            {
-                var devices = DsDevice.GetDevicesOfCat(FilterCategory.VideoInputDevice);
-                foreach (var device in devices)
-                    result.Add(device.Name ?? "Unbekannte Kamera");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[CameraManager] GetDevices failed: {ex.Message}");
-            }
-
-            return result;
+            // Initialization is now handled by DeviceEnumerationTask
         }
 
-        public bool Start(int deviceIndex)
+        public void RefreshDeviceList()
+        {
+            _deviceDescriptors.Clear();
+            _deviceDescriptors.AddRange(CameraAdapterFactory.EnumerateDevices());
+            LastStatusMessage = null;
+        }
+
+        public List<CameraDeviceDescriptor> GetAvailableDevices() => new(_deviceDescriptors);
+
+        public bool Start(int selectedDeviceIndex)
         {
             Stop();
-            ReleaseGraph();
+            LastStatusMessage = null;
 
-            try
+            if (selectedDeviceIndex < 0 || selectedDeviceIndex >= _deviceDescriptors.Count)
+                return false;
+
+            var device = _deviceDescriptors[selectedDeviceIndex];
+            CurrentConnectionKind = device.ConnectionKind;
+            _adapter = CameraAdapterFactory.CreateAdapter(device);
+            AttachAdapterEvents(_adapter);
+
+            if (!_adapter.Connect(device.Index))
             {
-                var devices = DsDevice.GetDevicesOfCat(FilterCategory.VideoInputDevice);
-                if (deviceIndex < 0 || deviceIndex >= devices.Length)
-                    return false;
-
-                _filterGraph = (IFilterGraph2)new FilterGraph();
-                _mediaControl = (IMediaControl)_filterGraph;
-                _captureGraphBuilder = (ICaptureGraphBuilder2)new CaptureGraphBuilder2();
-
-                DsError.ThrowExceptionForHR(_captureGraphBuilder.SetFiltergraph(_filterGraph));
-
-                DsError.ThrowExceptionForHR(_filterGraph.AddSourceFilterForMoniker(
-                    devices[deviceIndex].Mon,
-                    null,
-                    devices[deviceIndex].Name,
-                    out _sourceFilter!));
-
-                _sampleGrabber = (ISampleGrabber)new SampleGrabber();
-                _grabberFilter = (IBaseFilter)_sampleGrabber;
-                DsError.ThrowExceptionForHR(_filterGraph.AddFilter(_grabberFilter, "Sample Grabber"));
-
-                var mediaType = new AMMediaType
-                {
-                    majorType = MediaType.Video,
-                    subType = MediaSubType.RGB24,
-                    formatType = FormatType.VideoInfo
-                };
-
-                try
-                {
-                    DsError.ThrowExceptionForHR(_sampleGrabber.SetMediaType(mediaType));
-                }
-                finally
-                {
-                    DsUtils.FreeAMMediaType(mediaType);
-                }
-
-                DsError.ThrowExceptionForHR(_sampleGrabber.SetOneShot(false));
-                DsError.ThrowExceptionForHR(_sampleGrabber.SetBufferSamples(false));
-                DsError.ThrowExceptionForHR(_sampleGrabber.SetCallback(this, 1));
-
-                _nullRenderer = (IBaseFilter)new NullRenderer();
-                DsError.ThrowExceptionForHR(_filterGraph.AddFilter(_nullRenderer, "Null Renderer"));
-
-                DsError.ThrowExceptionForHR(_captureGraphBuilder.RenderStream(
-                    PinCategory.Capture,
-                    MediaType.Video,
-                    _sourceFilter,
-                    _grabberFilter,
-                    _nullRenderer));
-
-                ReadConnectedMediaType();
-                DsError.ThrowExceptionForHR(_mediaControl.Run());
-
-                IsRunning = true;
-                return true;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[CameraManager] Start failed: {ex.Message}");
-                Stop();
-                ReleaseGraph();
+                DetachAdapterEvents();
+                _adapter = null;
+                CurrentConnectionKind = null;
                 return false;
             }
-        }
 
-        private void ReadConnectedMediaType()
-        {
-            if (_sampleGrabber == null)
-                throw new InvalidOperationException("SampleGrabber ist nicht initialisiert.");
-
-            var mediaType = new AMMediaType();
-
-            try
+            if (RequestedResolution != null)
             {
-                DsError.ThrowExceptionForHR(_sampleGrabber.GetConnectedMediaType(mediaType));
-
-                if (mediaType.formatPtr == IntPtr.Zero || mediaType.formatType != FormatType.VideoInfo)
-                    throw new InvalidOperationException("Unerwartetes Videoformat vom Kameratreiber.");
-
-                var videoInfo = Marshal.PtrToStructure<VideoInfoHeader>(mediaType.formatPtr)
-                    ?? throw new InvalidOperationException("Konnte VideoInfoHeader nicht lesen.");
-                _frameWidth = videoInfo.BmiHeader.Width;
-                _frameHeight = Math.Abs(videoInfo.BmiHeader.Height);
-                _flipVertical = videoInfo.BmiHeader.Height > 0;
-
-                int bitsPerPixel = Math.Max(videoInfo.BmiHeader.BitCount, (short)24);
-                int calculatedStride = ((_frameWidth * bitsPerPixel + 31) / 32) * 4;
-                _frameStride = videoInfo.BmiHeader.ImageSize > 0 && _frameHeight > 0
-                    ? videoInfo.BmiHeader.ImageSize / _frameHeight
-                    : calculatedStride;
-            }
-            finally
-            {
-                DsUtils.FreeAMMediaType(mediaType);
-            }
-        }
-
-        public int SampleCB(double sampleTime, IMediaSample mediaSample) => 0;
-
-        public int BufferCB(double sampleTime, IntPtr buffer, int bufferLen)
-        {
-            if (!IsRunning || buffer == IntPtr.Zero || bufferLen <= 0 || _frameWidth <= 0 || _frameHeight <= 0)
-                return 0;
-
-            try
-            {
-                var sourceStride = _frameStride > 0 ? _frameStride : Math.Max(bufferLen / _frameHeight, _frameWidth * 3);
-                var sourceBuffer = new byte[bufferLen];
-                Marshal.Copy(buffer, sourceBuffer, 0, bufferLen);
-
-                byte[] normalizedBuffer;
-                if (_flipVertical)
-                {
-                    normalizedBuffer = new byte[bufferLen];
-
-                    for (int y = 0; y < _frameHeight; y++)
-                    {
-                        int sourceOffset = y * sourceStride;
-                        int targetOffset = (_frameHeight - 1 - y) * sourceStride;
-                        Buffer.BlockCopy(sourceBuffer, sourceOffset, normalizedBuffer, targetOffset, sourceStride);
-                    }
-                }
-                else
-                {
-                    normalizedBuffer = sourceBuffer;
-                }
-
-                var frame = BitmapSource.Create(
-                    _frameWidth,
-                    _frameHeight,
-                    96,
-                    96,
-                    PixelFormats.Bgr24,
-                    null,
-                    normalizedBuffer,
-                    sourceStride);
-                frame.Freeze();
-
-                lock (_frameLock)
-                    _currentFrame = frame;
-
-                FrameReady?.Invoke(frame);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[CameraManager] Buffer callback failed: {ex.Message}");
+                _adapter.SetProperty("FrameWidth", RequestedResolution.Width);
+                _adapter.SetProperty("FrameHeight", RequestedResolution.Height);
             }
 
-            return 0;
+            _adapter.StartLiveView();
+            IsRunning = true;
+            StatusChanged?.Invoke($"{device.AdapterName} gestartet: {device.Name}");
+            return true;
         }
 
         public void Stop()
         {
-            IsRunning = false;
+            _isStopping = true;
 
             try
             {
-                _mediaControl?.Stop();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[CameraManager] Stop failed: {ex.Message}");
-            }
+                if (_adapter != null && _adapter.IsConnected)
+                {
+                    _adapter.StopLiveView();
+                    _adapter.Disconnect();
+                }
 
-            lock (_frameLock)
-                _currentFrame = null;
-        }
-
-        public BitmapSource? GetCurrentFrame()
-        {
-            lock (_frameLock)
-                return _currentFrame;
-        }
-
-        public bool OpenDeviceSettings(IntPtr ownerWindowHandle)
-        {
-            if (_sourceFilter is not ISpecifyPropertyPages propertyPages)
-                return false;
-
-            DsCAUUID pageCollection = new();
-
-            try
-            {
-                DsError.ThrowExceptionForHR(propertyPages.GetPages(out pageCollection));
-                Guid[] pageIds = pageCollection.ToGuidArray();
-                if (pageIds.Length == 0)
-                    return false;
-
-                object cameraSource = _sourceFilter;
-                int hr = OleCreatePropertyFrame(
-                    ownerWindowHandle,
-                    0,
-                    0,
-                    "Kameraeinstellungen",
-                    1,
-                    ref cameraSource,
-                    pageIds.Length,
-                    pageIds,
-                    0,
-                    0,
-                    IntPtr.Zero);
-
-                return hr >= 0;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[CameraManager] OpenDeviceSettings failed: {ex.Message}");
-                return false;
+                DetachAdapterEvents();
+                _adapter = null;
+                IsRunning = false;
+                CurrentConnectionKind = null;
             }
             finally
             {
-                if (pageCollection.pElems != IntPtr.Zero)
-                    Marshal.FreeCoTaskMem(pageCollection.pElems);
+                _isStopping = false;
             }
+        }
+
+        public Bitmap? GetCurrentFrame() => _currentFrame;
+
+        public CameraResolution GetCurrentResolution()
+        {
+            return _adapter?.GetCurrentResolution() ?? new CameraResolution(0, 0);
+        }
+
+        public void SetRequestedResolution(int width, int height)
+        {
+            RequestedResolution = new CameraResolution(width, height);
+            _adapter?.SetProperty("FrameWidth", width);
+            _adapter?.SetProperty("FrameHeight", height);
+        }
+
+        public bool TriggerHardwareCapture()
+        {
+            if (_adapter == null || !IsRunning)
+                return false;
+
+            _adapter.CaptureImage();
+            return true;
+        }
+
+        public List<CameraResolution> GetSupportedResolutions(int deviceIndex)
+        {
+            return new List<CameraResolution>
+            {
+                new CameraResolution(320, 240),     // QVGA
+                new CameraResolution(640, 360),     // nHD
+                new CameraResolution(640, 480),     // VGA
+                new CameraResolution(800, 600),     // SVGA
+                new CameraResolution(1024, 576),    // WSVGA
+                new CameraResolution(1024, 768),    // XGA
+                new CameraResolution(1280, 720),    // HD
+                new CameraResolution(1280, 960),    // SXGA
+                new CameraResolution(1440, 810),    // HD+
+                new CameraResolution(1600, 900),    // HD+
+                new CameraResolution(1920, 1080),   // FHD
+                new CameraResolution(2560, 1440),   // QHD
+            };
+        }
+
+        private void Adapter_OnLiveViewFrame(byte[] imageData)
+        {
+            try
+            {
+                using var stream = new MemoryStream(imageData);
+                var bitmap = new Bitmap(stream);
+                _currentFrame = bitmap;
+                FrameReady?.Invoke(bitmap);
+            }
+            catch (Exception ex)
+            {
+                StatusChanged?.Invoke($"Decoding live view failed: {ex.Message}");
+            }
+        }
+
+        private void Adapter_OnImageCaptured(string filePath)
+        {
+            ImageCaptured?.Invoke(filePath);
+        }
+
+        private void Adapter_OnStatusChanged(string message)
+        {
+            LastStatusMessage = message;
+            StatusChanged?.Invoke(message);
+        }
+
+        private void Adapter_OnDisconnected()
+        {
+            if (_isStopping)
+                return;
+
+            LastStatusMessage = "Kameraverbindung getrennt.";
+            Stop();
+            StatusChanged?.Invoke("Kameraverbindung getrennt.");
+        }
+
+        private void AttachAdapterEvents(ICameraAdapter adapter)
+        {
+            adapter.OnLiveViewFrame += Adapter_OnLiveViewFrame;
+            adapter.OnImageCaptured += Adapter_OnImageCaptured;
+            adapter.OnStatusChanged += Adapter_OnStatusChanged;
+            adapter.OnDisconnected += Adapter_OnDisconnected;
+        }
+
+        private void DetachAdapterEvents()
+        {
+            if (_adapter == null)
+                return;
+
+            _adapter.OnLiveViewFrame -= Adapter_OnLiveViewFrame;
+            _adapter.OnImageCaptured -= Adapter_OnImageCaptured;
+            _adapter.OnStatusChanged -= Adapter_OnStatusChanged;
+            _adapter.OnDisconnected -= Adapter_OnDisconnected;
         }
 
         public void Dispose()
         {
             Stop();
-            ReleaseGraph();
+            GC.SuppressFinalize(this);
         }
-
-        private void ReleaseGraph()
-        {
-            ReleaseComObject(ref _nullRenderer);
-            ReleaseComObject(ref _grabberFilter);
-            ReleaseComObject(ref _sourceFilter);
-            ReleaseComObject(ref _captureGraphBuilder);
-            ReleaseComObject(ref _sampleGrabber);
-            ReleaseComObject(ref _mediaControl);
-            ReleaseComObject(ref _filterGraph);
-
-            _frameWidth = 0;
-            _frameHeight = 0;
-            _frameStride = 0;
-            _flipVertical = false;
-        }
-
-        private static void ReleaseComObject<T>(ref T? comObject) where T : class
-        {
-            if (comObject == null)
-                return;
-
-            try
-            {
-                if (Marshal.IsComObject(comObject))
-                    Marshal.ReleaseComObject(comObject);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[CameraManager] ReleaseComObject failed: {ex.Message}");
-            }
-            finally
-            {
-                comObject = null;
-            }
-        }
-
-        [DllImport("oleaut32.dll", CharSet = CharSet.Unicode)]
-        private static extern int OleCreatePropertyFrame(
-            IntPtr hwndOwner,
-            int x,
-            int y,
-            string lpszCaption,
-            int cObjects,
-            [MarshalAs(UnmanagedType.Interface)] ref object ppUnk,
-            int cPages,
-            [MarshalAs(UnmanagedType.LPArray)] Guid[] pPageClsID,
-            int lcid,
-            int dwReserved,
-            IntPtr pvReserved);
     }
 }

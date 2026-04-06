@@ -1,10 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Shapes;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Shapes;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Media;
 using OpenStopMotionStudio.Core;
 
 namespace OpenStopMotionStudio.GUI
@@ -55,7 +58,7 @@ namespace OpenStopMotionStudio.GUI
                 SetStatus($"Playback-Geschwindigkeit: {_playbackFps} fps");
         }
 
-        private void TimelineFrameScrollBar_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        private void TimelineFrameScrollBar_ValueChanged(object? sender, RangeBaseValueChangedEventArgs e)
         {
             if (!_uiReady || _suppressTimelineFrameScrollBar)
                 return;
@@ -64,22 +67,57 @@ namespace OpenStopMotionStudio.GUI
             MoveTimelineCursorToFrame((int)Math.Round(e.NewValue), false);
         }
 
-        private void TimelineScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        private void TimelineScrollViewer_PointerWheelChanged(object? sender, PointerWheelEventArgs e)
         {
             if (!_uiReady)
                 return;
 
-            int deltaFrames = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? 10 : 1;
-            int direction = e.Delta > 0 ? -1 : 1;
-
+            int oldFrame = _timelineCursorFrame;
+            DebugLogger.Instance.LogMouseWheel(e.Delta.Y);
+            
             StopPlaybackInternal();
-            MoveTimelineCursorToFrame(_timelineCursorFrame + direction * deltaFrames, true);
+            
+            // Mouse wheel up = next frame, down = previous frame
+            // Works even without captured frames for motion control preview
+            if (e.Delta.Y > 0)
+            {
+                int nextFrame = Math.Min(_timelineCursorFrame + 1, GetTimelineEndFrame());
+                DebugLogger.Instance.LogFrameNavigation(oldFrame, nextFrame, "Mouse Wheel Up");
+                MoveTimelineCursorToFrame(nextFrame, false);
+            }
+            else if (e.Delta.Y < 0)
+            {
+                int nextFrame = Math.Max(_timelineCursorFrame - 1, 1);
+                DebugLogger.Instance.LogFrameNavigation(oldFrame, nextFrame, "Mouse Wheel Down");
+                MoveTimelineCursorToFrame(nextFrame, false);
+            }
+            
+            // Explicitly prevent vertical scrolling by keeping Y-offset at 0
+            if (TimelineScrollViewer.Offset.Y != 0)
+            {
+                TimelineScrollViewer.Offset = new Vector(TimelineScrollViewer.Offset.X, 0);
+                DebugLogger.Instance.LogInfo("MouseWheel", "Reset vertical scroll to prevent unwanted vertical movement");
+            }
+            
+            // Ensure focus is on timeline to receive keyboard input
+            if (!TimelineScrollViewer.IsFocused)
+                TimelineScrollViewer.Focus();
+            
             e.Handled = true;
+        }
+
+        private void TimelineCanvas_PointerWheelChanged(object? sender, PointerWheelEventArgs e)
+        {
+            // Delegate to ScrollViewer handler - this intercepts at Canvas level before event bubbles to ScrollViewer
+            TimelineScrollViewer_PointerWheelChanged(sender, e);
         }
 
         private void MoveTimelineCursorToFrame(int frameNumber, bool announce)
         {
+            int oldFrame = _timelineCursorFrame;
             _timelineCursorFrame = Math.Clamp(frameNumber, 1, GetTimelineEndFrame());
+            
+            DebugLogger.Instance.LogTimelineCursorMove(_timelineCursorFrame);
 
             if (TryGetCapturedFrameByFrameNumber(_timelineCursorFrame, out int captureIndex, out CapturedFrame? frame))
             {
@@ -87,12 +125,14 @@ namespace OpenStopMotionStudio.GUI
                 _playbackIndex = captureIndex;
                 ShowPlaybackFrame(selectedFrame);
                 PlaybackStatusText.Text = $"Keyframe: Frame {selectedFrame.Index} ({captureIndex + 1}/{_capture.Frames.Count})";
+                DebugLogger.Instance.LogInfo("Timeline", $"Found keyframe at index {captureIndex}");
             }
             else
             {
                 _playbackIndex = -1;
                 HidePlaybackPreview();
                 PlaybackStatusText.Text = $"Cursor: Frame {_timelineCursorFrame} ohne Capture-Keyframe";
+                DebugLogger.Instance.LogInfo("Timeline", $"No keyframe at frame {_timelineCursorFrame}");
             }
 
             RefreshTimelineState();
@@ -163,7 +203,8 @@ namespace OpenStopMotionStudio.GUI
                 StopPlaybackInternal();
                 HidePlaybackPreview();
                 _playbackIndex = -1;
-                _timelineCursorFrame = 1;
+                // NOTE: Do NOT reset _timelineCursorFrame here - it breaks navigation before first capture!
+                // The cursor position should persist independently of frame count.
                 PlaybackStatusText.Text = "Timeline leer. Cursor auf Frame 1.";
             }
             else if (_playbackIndex >= 0 && _playbackIndex < _capture.Frames.Count)
@@ -206,8 +247,8 @@ namespace OpenStopMotionStudio.GUI
 
             DrawTimelineRows(canvasWidth);
             DrawTimelineGrid(timelineEndFrame, canvasHeight);
-            DrawCapturedMarkers(0, Color.FromRgb(0xE9, 0x45, 0x60), Color.FromRgb(0xFF, 0xD1, 0xD8));
-            DrawCapturedMarkers(1, Color.FromRgb(0x80, 0xB8, 0xFF), Color.FromRgb(0xF3, 0xF6, 0xFF));
+            DrawCapturedMarkers(0, "#E94560", "#FFD1D8");
+            DrawCapturedMarkers(1, "#80B8FF", "#F3F6FF");
             DrawTimelinePlayhead(canvasHeight);
         }
 
@@ -217,15 +258,15 @@ namespace OpenStopMotionStudio.GUI
             {
                 Width = canvasWidth,
                 Height = TimelineHeaderHeight,
-                Fill = new SolidColorBrush(Color.FromRgb(0x1B, 0x20, 0x34))
+                Fill = SolidColorBrush.Parse("#1B2034")
             }, 0, 0);
 
-            Color[] laneColors =
+            string[] laneColors =
             {
-                Color.FromRgb(0x2C, 0x19, 0x22),
-                Color.FromRgb(0x18, 0x1E, 0x32),
-                Color.FromRgb(0x14, 0x19, 0x2B),
-                Color.FromRgb(0x11, 0x16, 0x26)
+                "#2C1922",
+                "#181E32",
+                "#14192B",
+                "#111626"
             };
 
             for (int lane = 0; lane < TimelineLaneCount; lane++)
@@ -234,7 +275,7 @@ namespace OpenStopMotionStudio.GUI
                 {
                     Width = canvasWidth,
                     Height = TimelineLaneHeight,
-                    Fill = new SolidColorBrush(laneColors[lane])
+                    Fill = SolidColorBrush.Parse(laneColors[lane])
                 }, 0, TimelineHeaderHeight + lane * TimelineLaneHeight);
             }
         }
@@ -249,17 +290,14 @@ namespace OpenStopMotionStudio.GUI
 
                 AddTimelineElement(new Line
                 {
-                    X1 = x,
-                    X2 = x,
-                    Y1 = 0,
-                    Y2 = canvasHeight,
-                    Stroke = new SolidColorBrush(majorLine
-                        ? Color.FromRgb(0x4B, 0x50, 0x6B)
+                    StartPoint = new Point(x, 0),
+                    EndPoint = new Point(x, canvasHeight),
+                    Stroke = SolidColorBrush.Parse(majorLine
+                        ? "#4B506B"
                         : mediumLine
-                            ? Color.FromRgb(0x34, 0x39, 0x52)
-                            : Color.FromRgb(0x24, 0x29, 0x3E)),
-                    StrokeThickness = majorLine ? 1.2 : 0.7,
-                    SnapsToDevicePixels = true
+                            ? "#343952"
+                            : "#24293E"),
+                    StrokeThickness = majorLine ? 1.2 : 0.7
                 }, 0, 0);
 
                 if (!majorLine)
@@ -268,7 +306,7 @@ namespace OpenStopMotionStudio.GUI
                 var label = new TextBlock
                 {
                     Text = frameNumber.ToString(CultureInfo.InvariantCulture),
-                    Foreground = new SolidColorBrush(Color.FromRgb(0xC9, 0xCF, 0xE6)),
+                    Foreground = SolidColorBrush.Parse("#C9CFE6"),
                     FontSize = 10
                 };
                 AddTimelineElement(label, x + 3, 5);
@@ -279,17 +317,15 @@ namespace OpenStopMotionStudio.GUI
                 double y = TimelineHeaderHeight + lane * TimelineLaneHeight;
                 AddTimelineElement(new Line
                 {
-                    X1 = 0,
-                    X2 = GetTimelineCanvasWidth(timelineEndFrame),
-                    Y1 = y,
-                    Y2 = y,
-                    Stroke = new SolidColorBrush(Color.FromRgb(0x2D, 0x32, 0x44)),
+                    StartPoint = new Point(0, y),
+                    EndPoint = new Point(GetTimelineCanvasWidth(timelineEndFrame), y),
+                    Stroke = SolidColorBrush.Parse("#2D3244"),
                     StrokeThickness = 1
                 }, 0, 0);
             }
         }
 
-        private void DrawCapturedMarkers(int laneIndex, Color fillColor, Color selectedColor)
+        private void DrawCapturedMarkers(int laneIndex, string fillHex, string selectedHex)
         {
             double centerY = GetTimelineLaneCenter(laneIndex);
             int selectedFrameNumber = _playbackIndex >= 0 && _playbackIndex < _capture.Frames.Count
@@ -303,15 +339,15 @@ namespace OpenStopMotionStudio.GUI
 
                 var marker = new Polygon
                 {
-                    Points = new PointCollection
+                    Points = new List<Point>
                     {
                         new Point(x, centerY - 6),
                         new Point(x + 6, centerY),
                         new Point(x, centerY + 6),
                         new Point(x - 6, centerY)
                     },
-                    Fill = new SolidColorBrush(isSelected ? selectedColor : fillColor),
-                    Stroke = isSelected ? Brushes.White : new SolidColorBrush(Color.FromRgb(0x10, 0x14, 0x20)),
+                    Fill = SolidColorBrush.Parse(isSelected ? selectedHex : fillHex),
+                    Stroke = isSelected ? Brushes.White : SolidColorBrush.Parse("#101420"),
                     StrokeThickness = isSelected ? 1.6 : 1.0
                 };
 
@@ -322,14 +358,12 @@ namespace OpenStopMotionStudio.GUI
         private void DrawTimelinePlayhead(double canvasHeight)
         {
             double x = GetTimelineX(_timelineCursorFrame);
-            var accentBrush = new SolidColorBrush(Color.FromRgb(0x66, 0xA3, 0xFF));
+            var accentBrush = SolidColorBrush.Parse("#66A3FF");
 
             AddTimelineElement(new Line
             {
-                X1 = x,
-                X2 = x,
-                Y1 = 0,
-                Y2 = canvasHeight,
+                StartPoint = new Point(x, 0),
+                EndPoint = new Point(x, canvasHeight),
                 Stroke = accentBrush,
                 StrokeThickness = 2
             }, 0, 0);
@@ -343,7 +377,7 @@ namespace OpenStopMotionStudio.GUI
                 {
                     Text = _timelineCursorFrame.ToString(CultureInfo.InvariantCulture),
                     Foreground = Brushes.White,
-                    FontWeight = FontWeights.Bold,
+                    FontWeight = FontWeight.Bold,
                     FontSize = 10
                 }
             };
@@ -351,7 +385,7 @@ namespace OpenStopMotionStudio.GUI
             AddTimelineElement(frameLabel, Math.Max(0, x - 14), 2);
         }
 
-        private void AddTimelineElement(UIElement element, double left, double top)
+        private void AddTimelineElement(Control element, double left, double top)
         {
             TimelineCanvas.Children.Add(element);
             Canvas.SetLeft(element, left);
@@ -380,21 +414,21 @@ namespace OpenStopMotionStudio.GUI
 
         private void EnsureTimelineCursorVisible()
         {
-            if (TimelineScrollViewer.ViewportWidth <= 0)
+            if (TimelineScrollViewer.Viewport.Width <= 0)
                 return;
 
             double x = GetTimelineX(_timelineCursorFrame);
-            double leftEdge = TimelineScrollViewer.HorizontalOffset;
-            double rightEdge = leftEdge + TimelineScrollViewer.ViewportWidth;
+            double leftEdge = TimelineScrollViewer.Offset.X;
+            double rightEdge = leftEdge + TimelineScrollViewer.Viewport.Width;
             const double margin = 48;
 
             if (x < leftEdge + margin)
             {
-                TimelineScrollViewer.ScrollToHorizontalOffset(Math.Max(0, x - margin));
+                TimelineScrollViewer.Offset = new Vector(Math.Max(0, x - margin), TimelineScrollViewer.Offset.Y);
             }
             else if (x > rightEdge - margin)
             {
-                TimelineScrollViewer.ScrollToHorizontalOffset(Math.Max(0, x - TimelineScrollViewer.ViewportWidth + margin));
+                TimelineScrollViewer.Offset = new Vector(Math.Max(0, x - TimelineScrollViewer.Viewport.Width + margin), TimelineScrollViewer.Offset.Y);
             }
         }
     }

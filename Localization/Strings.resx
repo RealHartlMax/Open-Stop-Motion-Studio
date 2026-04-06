@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" />
+              <xsd:attribute name="xml:space" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="NoCameraFound" xml:space="preserve">
+    <value>Keine Kamera gefunden</value>
+  </data>
+  <data name="StartCameraButton_Content_Start" xml:space="preserve">
+    <value>▶ Kamera starten</value>
+  </data>
+  <data name="CameraChanged_Message" xml:space="preserve">
+    <value>Kamera geändert.\nZum Fortfahren erneut starten.</value>
+  </data>
+  <data name="CameraSwitched_Message" xml:space="preserve">
+    <value>Kamera gewechselt</value>
+  </data>
+  <data name="CameraSelectionChanged_Message" xml:space="preserve">
+    <value>Kameraauswahl geändert.</value>
+  </data>
+  <data name="StartCameraButton_Content_Stop" xml:space="preserve">
+    <value>⏹ Kamera stoppen</value>
+  </data>
+  <data name="NoCameraConnected_Message" xml:space="preserve">
+    <value>Keine Kamera verbunden.\nKamera in der Sidebar auswählen.</value>
+  </data>
+  <data name="CameraStopped_Message" xml:space="preserve">
+    <value>Kamera gestoppt.</value>
+  </data>
+  <data name="ConnectingCamera_Message" xml:space="preserve">
+    <value>Verbinde Kamera...\nWarte auf erstes Bild.</value>
+  </data>
+  <data name="CameraActive_Message" xml:space="preserve">
+    <value>Kamera aktiv: {0}</value>
+  </data>
+  <data name="Error_Title" xml:space="preserve">
+    <value>Fehler</value>
+  </data>
+  <data name="CameraCouldNotBeStarted_Message" xml:space="preserve">
+    <value>Kamera konnte nicht gestartet werden.</value>
+  </data>
+  <data name="WaitingForLiveImage_Message" xml:space="preserve">
+    <value>Warte auf Live-Bild</value>
+  </data>
+</root>

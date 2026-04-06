@@ -1,0 +1,22 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="OpenStopMotionStudio.GUI.ProjectTileControl">
+    <Grid RowDefinitions="*, Auto" Margin="10">
+        
+        <Border Classes="TileBorder" CornerRadius="8" Background="#2A2A2A">
+            <Image Source="{Binding ThumbnailPath}" Stretch="UniformToFill" />
+        </Border>
+
+        <PathIcon Data="M8.5,16.5L4.3,12.3L2.9,13.7L8.5,19.3L20.5,7.3L19.1,5.9L8.5,16.5Z" 
+                  Classes="SelectionCheckmark" 
+                  HorizontalAlignment="Left" 
+                  VerticalAlignment="Top" 
+                  Margin="5"/>
+
+        <TextBlock Grid.Row="1" 
+                   Text="{Binding Name}" 
+                   Classes="TileText"
+                   HorizontalAlignment="Center" 
+                   Margin="0,10,0,0"/>
+    </Grid>
+</UserControl>

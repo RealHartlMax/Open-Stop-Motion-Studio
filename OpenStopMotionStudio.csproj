@@ -1,30 +1,52 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UseWPF>true</UseWPF>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <AssemblyName>OpenStopMotionStudio</AssemblyName>
     <RootNamespace>OpenStopMotionStudio</RootNamespace>
+    <Version>0.1.1</Version>
+    <RuntimeIdentifiers>win-x64;linux-x64;osx-x64;osx-arm64</RuntimeIdentifiers>
+    <DefaultItemExcludes>$(DefaultItemExcludes);SDKs\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- DirectShow.NET: USB/Webcam Kamera-Zugriff (.NET Standard 2.0 kompatibel) -->
-    <PackageReference Include="DirectShowLib.Standard" Version="2.1.0" />
+    <!-- Avalonia UI: Cross-Plattform UI Framework -->
+    <PackageReference Include="Avalonia" Version="11.0.10" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.0.10" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.10" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.0.10" />
+    <PackageReference Include="Avalonia.ReactiveUI" Version="11.0.10" />
 
     <!-- EmguCV: OpenCV Wrapper für Bildverarbeitung und Overlay-Blending -->
     <PackageReference Include="Emgu.CV" Version="4.9.0.5494" />
-    <PackageReference Include="Emgu.CV.runtime.windows" Version="4.9.0.5494" />
+    <PackageReference Include="Emgu.CV.runtime.windows" Version="4.9.0.5494" Condition="'$(OS)' == 'Windows_NT' Or '$(RuntimeIdentifier)' == 'win-x64'" />
+    <PackageReference Include="Emgu.CV.runtime.ubuntu-x64" Version="4.9.0.5494" Condition="'$(RuntimeIdentifier)' == 'linux-x64'" />
+    <PackageReference Include="Emgu.CV.runtime.mini.macos" Version="4.9.0.5494" Condition="'$(RuntimeIdentifier)' == 'osx-x64' Or '$(RuntimeIdentifier)' == 'osx-arm64'" />
+    <PackageReference Include="DirectShowLib.Standard" Version="2.1.0" Condition="'$(OS)' == 'Windows_NT'" />
 
     <!-- Stream Deck Anbindung: SDK + Hardware-Provider -->
     <PackageReference Include="OpenMacroBoard.SDK" Version="6.0.0" />
     <PackageReference Include="StreamDeckSharp" Version="6.0.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="2.1.13" />
+    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="1.0.0" />
 
     <!-- MVVM-Infrastruktur -->
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Core\CameraDeviceEnumerator.Windows.cs" Condition="'$(OS)' != 'Windows_NT'" />
+    <Compile Remove="Core\CameraDeviceEnumerator.Other.cs" Condition="'$(OS)' == 'Windows_NT'" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
 
 </Project>

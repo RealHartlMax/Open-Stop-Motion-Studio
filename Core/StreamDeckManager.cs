@@ -1,9 +1,13 @@
 using System;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
 using OpenMacroBoard.SDK;
 using StreamDeckSharp;
+using SixLabors.Fonts;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 
 namespace OpenStopMotionStudio.Core
 {
@@ -138,20 +142,41 @@ namespace OpenStopMotionStudio.Core
             {
                 int size = _deck.Keys.KeySize;
 
-                using var bmp = new Bitmap(size, size);
-                using var gfx = Graphics.FromImage(bmp);
-                gfx.Clear(Color.FromArgb(r, g, b));
+                using var image = new Image<Rgba32>(size, size);
+                
+                var backgroundColor = new Rgba32(r, g, b);
+                
+                if (!SystemFonts.TryGet("Arial", out FontFamily fontFamily))
+                {
+                    if (SystemFonts.Families.Any())
+                    {
+                        fontFamily = SystemFonts.Families.First();
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("[StreamDeckManager] No fonts found.");
+                        return;
+                    }
+                }
 
-                using var font  = new Font("Arial", size * 0.14f, FontStyle.Bold);
-                using var brush = new SolidBrush(Color.White);
+                var font = fontFamily.CreateFont(size * 0.14f, FontStyle.Bold);
+                var textColor = Color.White;
 
-                var textSize = gfx.MeasureString(label, font);
-                gfx.DrawString(label, font, brush,
-                    (size - textSize.Width)  / 2,
-                    (size - textSize.Height) / 2);
+                image.Mutate(ctx => {
+                    ctx.Fill(backgroundColor);
+
+                    var textOptions = new RichTextOptions(font)
+                    {
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Origin = new PointF(size / 2f, size / 2f)
+                    };
+
+                    ctx.DrawText(textOptions, label, textColor);
+                });
 
                 using var imageStream = new MemoryStream();
-                bmp.Save(imageStream, ImageFormat.Png);
+                image.SaveAsPng(imageStream);
                 imageStream.Position = 0;
 
                 _deck.SetKeyBitmap(buttonIndex, KeyBitmap.Create.FromStream(imageStream));

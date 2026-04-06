@@ -1,52 +1,33 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Markup.Xaml;
+using Avalonia.Platform.Storage;
+using OpenStopMotionStudio.GUI;
+using Avalonia.Threading;
 using System;
 using System.IO;
-using System.Windows;
 
 namespace OpenStopMotionStudio
 {
     public partial class App : Application
     {
-        protected override void OnStartup(StartupEventArgs e)
+        public override void Initialize()
         {
-            base.OnStartup(e);
-
-            // Globaler Exception-Handler: verhindert stille Abstürze
-            DispatcherUnhandledException += (sender, args) =>
-            {
-                Exception rootException = UnwrapException(args.Exception);
-                WriteUnhandledExceptionLog(args.Exception);
-
-                MessageBox.Show(
-                    $"Unerwarteter Fehler:\n{rootException.GetType().Name}: {rootException.Message}",
-                    "Open Stop Motion Studio – Fehler",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-                args.Handled = true;
-            };
+            AvaloniaXamlLoader.Load(this);
         }
 
-        private static Exception UnwrapException(Exception exception)
+        public override void OnFrameworkInitializationCompleted()
         {
-            while (exception.InnerException != null)
-                exception = exception.InnerException;
-
-            return exception;
-        }
-
-        private static void WriteUnhandledExceptionLog(Exception exception)
-        {
-            try
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                string logPath = Path.Combine(AppContext.BaseDirectory, "open-stop-motion-studio-error.log");
-                string logEntry =
-                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Unhandled exception{Environment.NewLine}{exception}{Environment.NewLine}{Environment.NewLine}";
+                var splashWindow = new SplashWindow(desktop);
+                // We don't set MainWindow here because the splash screen is temporary.
+                // The MainWindow will be set by the SplashWindow itself once init is complete.
+                splashWindow.Show();
+            }
 
-                File.AppendAllText(logPath, logEntry);
-            }
-            catch
-            {
-                // Logging must never crash the global exception handler.
-            }
+            base.OnFrameworkInitializationCompleted();
         }
     }
 }

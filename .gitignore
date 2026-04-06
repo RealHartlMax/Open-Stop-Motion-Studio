@@ -8,6 +8,9 @@ obj/
 .zenflow/
 *.user
 *.suo
+implementation/
+GEMINI.md
+logs/
 
 # Vendor SDKs are kept locally inside the tracked SDKs folder.
-# The Nikon/Canon directories themselves stay in Git via their nested .gitignore files.
+# The Nikon/Canon/Sony directories themselves stay in Git via their nested .gitignore files.

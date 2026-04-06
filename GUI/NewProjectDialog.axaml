@@ -1,0 +1,114 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="OpenStopMotionStudio.GUI.NewProjectDialog"
+        Title="Neues Projekt erstellen"
+        Width="550" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        Background="#222222"
+        CanResize="False"
+        SystemDecorations="BorderOnly">
+    <Window.Styles>
+        <Style Selector="Button.OutlineButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="#555555"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="15"/>
+            <Setter Property="Foreground" Value="#CCCCCC"/>
+            <Setter Property="Padding" Value="15,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style Selector="Button.PrimaryButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="#E53935"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="CornerRadius" Value="15"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="25,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style Selector="Button.HelpButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="#555555"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="20"/>
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Foreground" Value="#AAAAAA"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="#151515"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#555555"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="2"/>
+            <Setter Property="Padding" Value="8,5"/>
+        </Style>
+
+        <Style Selector="TextBox:focus">
+            <Setter Property="BorderBrush" Value="#E53935"/>
+        </Style>
+
+        <Style Selector="TextBox.PassiveInput">
+            <Setter Property="Background" Value="#1A1A1A"/>
+            <Setter Property="Foreground" Value="#777777"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+    </Window.Styles>
+    <Border BorderBrush="#333333" BorderThickness="1">
+        <Grid RowDefinitions="Auto, *, Auto" Margin="20">
+            
+            <TextBlock Grid.Row="0" 
+                       Text="Neues Projekt erstellen" 
+                       FontSize="16" 
+                       FontWeight="SemiBold" 
+                       Foreground="White" 
+                       Margin="0,0,0,25"/>
+
+            <Grid Grid.Row="1" ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto" Margin="0,0,0,20">
+                
+                <TextBlock Grid.Row="0" Grid.Column="0" 
+                           Text="Name" 
+                           Foreground="#AAAAAA" 
+                           VerticalAlignment="Center" 
+                           HorizontalAlignment="Right" 
+                           Margin="0,0,15,15"/>
+                           
+                <TextBox x:Name="NameTextBox" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" 
+                         Text="Unbenanntes Projekt"
+                         Margin="0,0,0,15"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" 
+                           Text="Speicherort" 
+                           Foreground="#AAAAAA" 
+                           VerticalAlignment="Center" 
+                           HorizontalAlignment="Right" 
+                           Margin="0,0,15,0"/>
+                           
+                <TextBox x:Name="LocationTextBox" Grid.Row="1" Grid.Column="1" 
+                         Text="C:\Users\max\OpenStopMotionStudio" 
+                         IsReadOnly="True" 
+                         Classes="PassiveInput"
+                         Margin="0,0,10,0"/>
+                         
+                <Button x:Name="ChangeLocationButton" Grid.Row="1" Grid.Column="2" 
+                        Content="Ändern..." 
+                        Classes="OutlineButton"/>
+            </Grid>
+
+            <Grid Grid.Row="2" ColumnDefinitions="Auto, *" >
+                
+                <Button Grid.Column="0" Content="?" Classes="HelpButton"/>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="15" HorizontalAlignment="Right">
+                    <Button x:Name="CancelButton" Content="Abbrechen" Classes="OutlineButton"/>
+                    <Button x:Name="CreateButton" Content="Erstellen" Classes="PrimaryButton"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

@@ -1,0 +1,6 @@
+MSBUILD : error MSB1001: Unbekannter Schalter.
+    Vollst├ñndige Befehlszeile: ÔÇ×C:\Program Files\dotnet\sdk\10.0.201\MSBuild.dll -maxcpucount --verbosity:m -tlp:default=auto --property:NuGetInteractive=false --restoreProperty:NuGetInteractive=false --restoreProperty:EnableDefaultCompileItems=false --restoreProperty:EnableDefaultEmbeddedResourceItems=false --restoreProperty:EnableDefaultNoneItems=false --nologo --verbose -consoleloggerparameters:Summary -restore -distributedlogger:Microsoft.DotNet.Cli.Commands.MSBuild.MSBuildLogger,C:\Program Files\dotnet\sdk\10.0.201\dotnet.dll*Microsoft.DotNet.Cli.Commands.MSBuild.MSBuildForwardingLogger,C:\Program Files\dotnet\sdk\10.0.201\dotnet.dllÔÇ£
+  Switches, die von Antwortdateien angef├╝gt werden:
+Schalter: --verbose
+
+Informationen zur Schaltersyntax erhalten Sie, wenn Sie "MSBuild -help" eingeben.

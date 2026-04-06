@@ -1,129 +1,13 @@
-<Application x:Class="OpenStopMotionStudio.App"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             StartupUri="GUI/MainWindow.xaml">
+             x:Class="OpenStopMotionStudio.App"
+             RequestedThemeVariant="Dark">
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="avares://OpenStopMotionStudio/GUI/Theme.axaml"/>
+    </Application.Styles>
+
     <Application.Resources>
-        <!-- Globale Styles für Dark Theme -->
-        <SolidColorBrush x:Key="BackgroundDark" Color="#1A1A2E"/>
-        <SolidColorBrush x:Key="BackgroundMid"  Color="#16213E"/>
-        <SolidColorBrush x:Key="AccentColor"    Color="#E94560"/>
-        <SolidColorBrush x:Key="TextPrimary"    Color="#EAEAEA"/>
-        <SolidColorBrush x:Key="TextSecondary"  Color="#888888"/>
-
-        <!-- Button Style: Einheitliches Dark-UI Design -->
-        <Style TargetType="Button" x:Key="StudioButton">
-            <Setter Property="Background"   Value="#E94560"/>
-            <Setter Property="Foreground"   Value="White"/>
-            <Setter Property="FontWeight"   Value="Bold"/>
-            <Setter Property="FontSize"     Value="14"/>
-            <Setter Property="Padding"      Value="16,8"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Cursor"       Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
-                                CornerRadius="6"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#C73652"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#A02840"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Toggle Button Style für Onion Skin -->
-        <Style TargetType="ToggleButton" x:Key="OnionToggle">
-            <Setter Property="Background"       Value="#2D2D44"/>
-            <Setter Property="Foreground"       Value="#EAEAEA"/>
-            <Setter Property="FontWeight"       Value="SemiBold"/>
-            <Setter Property="Padding"          Value="14,7"/>
-            <Setter Property="BorderThickness"  Value="0"/>
-            <Setter Property="Cursor"           Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ToggleButton">
-                        <Border Background="{TemplateBinding Background}"
-                                CornerRadius="6"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Background" Value="#4CAF50"/>
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Opacity" Value="0.85"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style TargetType="ComboBoxItem" x:Key="StudioComboBoxItem">
-            <Setter Property="Foreground" Value="#111827"/>
-            <Setter Property="Background" Value="#F3F4F6"/>
-            <Setter Property="Padding" Value="8,4"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-            <Style.Triggers>
-                <Trigger Property="IsHighlighted" Value="True">
-                    <Setter Property="Background" Value="#FFD7DE"/>
-                </Trigger>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#E94560"/>
-                    <Setter Property="Foreground" Value="White"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style TargetType="ComboBox" x:Key="StudioComboBox">
-            <Setter Property="Foreground" Value="#111827"/>
-            <Setter Property="Background" Value="#F3F4F6"/>
-            <Setter Property="BorderBrush" Value="#2D2D44"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="6,4"/>
-            <Setter Property="ItemContainerStyle" Value="{StaticResource StudioComboBoxItem}"/>
-        </Style>
-
-        <Style TargetType="TextBox" x:Key="StudioTextBox">
-            <Setter Property="Foreground" Value="#111827"/>
-            <Setter Property="Background" Value="#F3F4F6"/>
-            <Setter Property="BorderBrush" Value="#2D2D44"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="6,4"/>
-            <Setter Property="FontSize" Value="12"/>
-        </Style>
-
-        <Style TargetType="ListBoxItem" x:Key="StudioListBoxItem">
-            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Margin" Value="0,0,8,0"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-            <Style.Triggers>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Foreground" Value="White"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style TargetType="ListBox" x:Key="StudioListBox">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
-            <Setter Property="ItemContainerStyle" Value="{StaticResource StudioListBoxItem}"/>
-            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
-            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled"/>
-        </Style>
+         <SolidColorBrush x:Key="SystemAltHighColor">#1E1E1E</SolidColorBrush>
     </Application.Resources>
 </Application>

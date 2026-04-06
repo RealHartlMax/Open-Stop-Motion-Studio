@@ -1,0 +1,75 @@
+name: 🐞 Bug Report
+description: Report a bug in Open Stop Motion Studio
+title: "[BUG]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug 🎬  
+        Please provide as much detail as possible.
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, .NET version, camera, hardware
+      placeholder: "Windows 11 / macOS / Linux, .NET 10, Canon EOS R, Stream Deck MK2"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: camera_type
+    attributes:
+      label: Camera Type
+      options:
+        - Webcam / Capture Card
+        - Canon DSLR
+        - Sony DSLR
+        - Nikon DSLR
+        - Other / Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: What happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      placeholder: |
+        1. Start application
+        2. Connect camera
+        3. Press capture
+        4. Crash occurs
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Screenshots
+      description: Paste logs or drag screenshots here
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I am using the latest version
+          required: true
+        - label: I searched for existing issues
+          required: true

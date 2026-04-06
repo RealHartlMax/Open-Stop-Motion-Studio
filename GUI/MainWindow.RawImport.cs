@@ -1,9 +1,9 @@
 using System;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Media;
 using OpenStopMotionStudio.Core;
 
 namespace OpenStopMotionStudio.GUI
@@ -34,12 +34,12 @@ namespace OpenStopMotionStudio.GUI
             if (_nikonImageSdkLocation is null)
             {
                 RawSdkStatusText.Text = "Nikon SDK: kein lokales NkImgSDK gefunden. Bitte SDKs/Nikon pruefen.";
-                RawSdkStatusText.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0x9A, 0x76));
+                RawSdkStatusText.Foreground = SolidColorBrush.Parse("#FF9A76");
                 return;
             }
 
             RawSdkStatusText.Text = $"Nikon SDK: {_nikonImageSdkLocation.DisplayName} bereit";
-            RawSdkStatusText.Foreground = new SolidColorBrush(Color.FromRgb(0x99, 0xD9, 0x8C));
+            RawSdkStatusText.Foreground = SolidColorBrush.Parse("#99D98C");
         }
 
         private void UpdateRawImportUiState()
@@ -51,9 +51,9 @@ namespace OpenStopMotionStudio.GUI
             ImportNefButton.Content = _rawImportBusy ? "NEF-Import laeuft..." : "NEF importieren";
         }
 
-        private void SelectRawSourceFolder_Click(object sender, RoutedEventArgs e)
+        private async void SelectRawSourceFolder_Click(object sender, RoutedEventArgs e)
         {
-            string? folder = BrowseForFolder("RAW-Ordner auswählen");
+            string? folder = await BrowseForFolder("RAW-Ordner auswählen");
             if (string.IsNullOrWhiteSpace(folder))
                 return;
 
@@ -71,24 +71,26 @@ namespace OpenStopMotionStudio.GUI
             RefreshNikonSdkStatus();
             if (_nikonImageSdkLocation is null)
             {
-                MessageBox.Show(
-                    "Kein passendes Nikon Image SDK gefunden.\nBitte den lokalen SDK-Ordner unter SDKs/Nikon prüfen.",
-                    "NEF-Import",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                // TODO: Avalonia does not have a built-in MessageBox. A custom window or a third-party library is needed.
+                // MessageBox.Show(
+                //     "Kein passendes Nikon Image SDK gefunden.\nBitte den lokalen SDK-Ordner unter SDKs/Nikon prüfen.",
+                //     "NEF-Import",
+                //     MessageBoxButton.OK,
+                //     MessageBoxImage.Information);
                 UpdateRawImportUiState();
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(_rawSourceFolder))
-            {
-                MessageBox.Show(
-                    "Bitte zuerst einen RAW-Ordner mit NEF-Dateien auswählen.",
-                    "NEF-Import",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-                return;
-            }
+            // TODO: Avalonia does not have a built-in MessageBox. A custom window or a third-party library is needed.
+            // if (string.IsNullOrWhiteSpace(_rawSourceFolder))
+            // {
+            //     MessageBox.Show(
+            //         "Bitte zuerst einen RAW-Ordner mit NEF-Dateien auswählen.",
+            //         "NEF-Import",
+            //         MessageBoxButton.OK,
+            //         MessageBoxImage.Information);
+            //     return;
+            // }
 
             _rawImportBusy = true;
             UpdateRawImportUiState();
@@ -122,13 +124,14 @@ namespace OpenStopMotionStudio.GUI
                 ApplyImportedFrames(summary);
                 SetStatus($"NEF-Import fertig: {summary.ImportedCount} Frames nach {summary.MasterFolder}");
             }
-            catch (Exception ex)
+            catch
             {
-                MessageBox.Show(
-                    ex.Message,
-                    "NEF-Import",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                // TODO: Avalonia does not have a built-in MessageBox. A custom window or a third-party library is needed.
+                // MessageBox.Show(
+                //     ex.Message,
+                //     "NEF-Import",
+                //     MessageBoxButton.OK,
+                //     MessageBoxImage.Error);
                 SetStatus("NEF-Import fehlgeschlagen.");
             }
             finally

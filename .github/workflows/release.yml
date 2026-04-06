@@ -1,0 +1,121 @@
+name: Build and Release EXE
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger bei Tags wie v0.1.1, v1.0 etc.
+
+permissions:
+  contents: write # Wichtig für das Erstellen von Releases auf Job-Ebene
+
+jobs:
+  # JOB 1: Changelog auslesen und Release vorbereiten
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      changelog: ${{ steps.git_log.outputs.changelog }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get Git Changelog
+        id: git_log
+        shell: bash
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          LOG=$(git log $LAST_TAG..HEAD --oneline --pretty=format:'- %s')
+          
+          # Sicherer Export für mehrzeilige Texte (verhindert GitHub-Warnungen)
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "changelog<<$EOF" >> $GITHUB_OUTPUT
+          echo "$LOG" >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body: |
+            ### Änderungen in dieser Version:
+            ${{ steps.git_log.outputs.changelog }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Discord Changelog Notification
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK_CHANGELOG }}
+          status: success
+          title: "📝 Changelog für ${{ github.ref_name }}"
+          description: |
+            **Änderungen:**
+            ${{ steps.git_log.outputs.changelog }}
+          color: 0x3498db
+
+  # JOB 2: Kompilieren für alle Betriebssysteme
+  build:
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Matrix definiert die Kombinationen aus OS und .NET Runtime Identifier (RID)
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: macos-latest
+            rid: osx-x64     # Für ältere Intel-Macs
+          - os: macos-latest
+            rid: osx-arm64   # Für moderne Apple Silicon Macs (M1/M2/M3...)
+            
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x' # Aktualisiert auf .NET 10
+
+      - name: Publish App
+        run: dotnet publish "OpenStopMotionStudio.csproj" -c Release -r ${{ matrix.rid }} --self-contained true /p:PublishSingleFile=true -o ./publish-folder
+
+      # Windows packt als .zip
+      - name: Zip Release (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          $VERSION = "${{ github.ref_name }}".Substring(1)
+          Compress-Archive -Path ./publish-folder/* -DestinationPath OSMS-${{ matrix.rid }}-v$VERSION.zip
+
+      # Linux und macOS packen als .tar.gz (besserer Standard für Unix-Systeme)
+      - name: Tar Release (Linux & macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          tar -czvf OSMS-${{ matrix.rid }}-v$VERSION.tar.gz -C ./publish-folder .
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # Lädt alle erzeugten Archive in das im Job "prepare" erstellte Release hoch
+          files: |
+            *.zip
+            *.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # JOB 3: Finale Benachrichtigung
+  notify:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Discord Release Notification
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK_RELEASE }}
+          status: success
+          title: "🚀 Neues Release: ${{ github.ref_name }}"
+          description: "Open Stop Motion Studio v${{ github.ref_name }} wurde veröffentlicht (Win, Mac & Linux)! [Zum Download auf GitHub](${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }})"
+          color: 0x00ff00
