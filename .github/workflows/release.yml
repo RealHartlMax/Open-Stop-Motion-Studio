@@ -14,6 +14,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   prepare:
     name: Resolve tag and release notes
@@ -211,7 +214,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          dotnet publish OpenStopMotionStudio.csproj -c Release -r ${{ matrix.rid }} --self-contained true /p:PublishSingleFile=true -o ./publish-folder
+          dotnet publish OpenStopMotionStudio.csproj -c Release -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -o ./publish-folder
 
       - name: Archive release (Windows)
         if: matrix.os == 'windows-latest'
