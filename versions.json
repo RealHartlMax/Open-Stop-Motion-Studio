@@ -1,13 +1,22 @@
 {
   "updateInfoUrl": "https://raw.githubusercontent.com/Open-Stop-Motion-Studio/Open-Stop-Motion-Studio/main/versions.json",
-  "latestVersion": "0.1.1",
+  "latestVersion": "0.2.1",
   "downloadUrl": "https://github.com/Open-Stop-Motion-Studio/Open-Stop-Motion-Studio/releases/latest",
   "releaseNotes": "",
   "changelog": [
     {
-      "version": "0.1.2",
+      "version": "0.2.1",
       "date": "2026-04-11",
-      "title": "Unreleased work in progress",
+      "title": "Cross-platform build fix and CI pipeline sequencing",
+      "highlights": [
+        "Fixed compilation error on Linux and macOS caused by missing CameraDeviceEnumerator.Other.cs non-Windows partial method implementation.",
+        "Auto-tag workflow now waits for CI to succeed before creating a version tag, preventing releases on broken builds."
+      ]
+    },
+    {
+      "version": "0.2.0",
+      "date": "2026-04-11",
+      "title": "Reference overlays, Sony CrSDK, in-app updater, and cross-platform improvements",
       "highlights": [
         "Reference overlays for single images, image sequences, and video with loop/hold playback controls.",
         "Loop start/end comparison overlay with edge crossfade for seamless loop checks.",

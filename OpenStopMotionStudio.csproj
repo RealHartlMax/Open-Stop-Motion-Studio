@@ -10,7 +10,7 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <AssemblyName>OpenStopMotionStudio</AssemblyName>
     <RootNamespace>OpenStopMotionStudio</RootNamespace>
-    <Version>0.1.1</Version>
+    <Version>0.2.1</Version>
     <RuntimeIdentifiers>win-x64;linux-x64;osx-x64;osx-arm64</RuntimeIdentifiers>
     <DefaultItemExcludes>$(DefaultItemExcludes);SDKs\**</DefaultItemExcludes>
   </PropertyGroup>

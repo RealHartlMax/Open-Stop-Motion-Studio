@@ -4,7 +4,22 @@ All notable changes to this project are documented here.
 Alle wichtigen Aenderungen an diesem Projekt werden hier dokumentiert.
 
 ---
-## Unreleased
+## v0.2.1 - 2026-04-11
+
+### English
+
+#### Fixed
+- **Cross-Platform Build**: Fixed a compilation error on Linux and macOS caused by the missing `CameraDeviceEnumerator.Other.cs` non-Windows partial method implementation.
+- **CI Pipeline Sequencing**: Auto-tag workflow now waits for the CI build to complete successfully before creating a version tag, preventing tags on broken builds.
+
+### Deutsch
+
+#### Behoben
+- **Plattformuebergreifender Build**: Einen Kompilierfehler unter Linux und macOS behoben, der durch die fehlende Nicht-Windows-Partial-Method-Implementierung in `CameraDeviceEnumerator.Other.cs` verursacht wurde.
+- **CI-Pipeline-Reihenfolge**: Der Auto-Tag-Workflow wartet jetzt auf den erfolgreichen Abschluss des CI-Builds, bevor ein Versions-Tag erstellt wird.
+
+---
+## v0.2.0 - 2026-04-11
 
 ### English
 
