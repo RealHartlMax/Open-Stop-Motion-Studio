@@ -12,6 +12,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: auto-tag-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
 jobs:
   version-and-tag:
     name: Calculate SemVer and create tag
@@ -136,12 +140,29 @@ jobs:
         shell: bash
         env:
           TAG_NAME: ${{ steps.version.outputs.next_tag }}
+          TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
+
+          git fetch --tags origin
+          if git ls-remote --tags --exit-code origin "refs/tags/$TAG_NAME" >/dev/null 2>&1; then
+            echo "Tag $TAG_NAME already exists on origin; skipping."
+            exit 0
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
-          git push origin "refs/tags/$TAG_NAME"
+          git tag -a "$TAG_NAME" "$TARGET_SHA" -m "Release $TAG_NAME"
+
+          if ! git push origin "refs/tags/$TAG_NAME"; then
+            if git ls-remote --tags --exit-code origin "refs/tags/$TAG_NAME" >/dev/null 2>&1; then
+              echo "Tag $TAG_NAME was created by another run; treating as success."
+              exit 0
+            fi
+
+            echo "Failed to push tag $TAG_NAME."
+            exit 1
+          fi
 
       - name: Write summary
         shell: bash
