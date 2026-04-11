@@ -237,7 +237,7 @@ jobs:
           tar -czf "OSMS-${{ matrix.rid }}-v${VERSION}.tar.gz" -C ./publish-folder .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: release-${{ matrix.rid }}
           path: |
@@ -251,14 +251,15 @@ jobs:
 
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: dist
 
       - name: Publish release
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           TAG_NAME: ${{ needs.prepare.outputs.tag_name }}
           RELEASE_TITLE: ${{ needs.prepare.outputs.release_title }}
           RELEASE_BODY: ${{ needs.prepare.outputs.release_body }}
@@ -268,14 +269,14 @@ jobs:
           NOTES_FILE="$(mktemp)"
           printf '%s\n' "$RELEASE_BODY" > "$NOTES_FILE"
 
-          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
-            gh release edit "$TAG_NAME" --title "$RELEASE_TITLE" --notes-file "$NOTES_FILE"
+          if gh release view "$TAG_NAME" --repo "$GH_REPO" >/dev/null 2>&1; then
+            gh release edit "$TAG_NAME" --repo "$GH_REPO" --title "$RELEASE_TITLE" --notes-file "$NOTES_FILE"
           else
-            gh release create "$TAG_NAME" --title "$RELEASE_TITLE" --notes-file "$NOTES_FILE"
+            gh release create "$TAG_NAME" --repo "$GH_REPO" --title "$RELEASE_TITLE" --notes-file "$NOTES_FILE"
           fi
 
           find dist -type f \( -name '*.zip' -o -name '*.tar.gz' \) -print0 | while IFS= read -r -d '' file; do
-            gh release upload "$TAG_NAME" "$file" --clobber
+            gh release upload "$TAG_NAME" "$file" --repo "$GH_REPO" --clobber
           done
 
       - name: Push changelog to Discord
