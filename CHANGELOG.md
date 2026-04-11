@@ -10,12 +10,14 @@ Alle wichtigen Aenderungen an diesem Projekt werden hier dokumentiert.
 
 #### Fixed
 - **Cross-Platform Build**: Fixed a compilation error on Linux and macOS caused by the missing `CameraDeviceEnumerator.Other.cs` non-Windows partial method implementation.
+- **CI macOS Compatibility**: Replaced `mapfile` in the CI test step with a Bash 3.2-compatible `while read` loop, fixing the macOS build failure.
 - **CI Pipeline Sequencing**: Auto-tag workflow now waits for the CI build to complete successfully before creating a version tag, preventing tags on broken builds.
 
 ### Deutsch
 
 #### Behoben
 - **Plattformuebergreifender Build**: Einen Kompilierfehler unter Linux und macOS behoben, der durch die fehlende Nicht-Windows-Partial-Method-Implementierung in `CameraDeviceEnumerator.Other.cs` verursacht wurde.
+- **CI macOS-Kompatibilitaet**: `mapfile` im CI-Test-Schritt durch eine Bash-3.2-kompatible `while read`-Schleife ersetzt, was den macOS-Build-Fehler behebt.
 - **CI-Pipeline-Reihenfolge**: Der Auto-Tag-Workflow wartet jetzt auf den erfolgreichen Abschluss des CI-Builds, bevor ein Versions-Tag erstellt wird.
 
 ---

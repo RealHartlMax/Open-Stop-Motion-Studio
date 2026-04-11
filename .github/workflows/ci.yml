@@ -44,7 +44,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mapfile -t TEST_PROJECTS < <(find . -type f -name "*Tests*.csproj")
+          TEST_PROJECTS=()
+          while IFS= read -r -d '' f; do
+            TEST_PROJECTS+=("$f")
+          done < <(find . -type f -name "*Tests*.csproj" -print0)
 
           if [ ${#TEST_PROJECTS[@]} -eq 0 ]; then
             echo "No test projects found."

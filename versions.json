@@ -10,6 +10,7 @@
       "title": "Cross-platform build fix and CI pipeline sequencing",
       "highlights": [
         "Fixed compilation error on Linux and macOS caused by missing CameraDeviceEnumerator.Other.cs non-Windows partial method implementation.",
+        "Replaced mapfile with a Bash 3.2-compatible while-read loop in CI, fixing the macOS build failure.",
         "Auto-tag workflow now waits for CI to succeed before creating a version tag, preventing releases on broken builds."
       ]
     },
