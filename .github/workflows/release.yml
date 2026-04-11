@@ -59,7 +59,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          git fetch --tags origin
+          # Refresh tag refs even if a local tag with same name points elsewhere.
+          # This avoids "would clobber existing tag" failures in workflow_dispatch reruns.
+          git fetch --force --tags origin
           PREVIOUS_TAG=$(git tag --list 'v*' --sort=-v:refname | grep -Fxv "$TAG_NAME" | head -n 1 || true)
 
           CURRENT_VERSION="${TAG_NAME#v}"
