@@ -1,0 +1,53 @@
+{
+  "updateInfoUrl": "https://raw.githubusercontent.com/Open-Stop-Motion-Studio/Open-Stop-Motion-Studio/main/versions.json",
+  "latestVersion": "0.1.1",
+  "downloadUrl": "https://github.com/Open-Stop-Motion-Studio/Open-Stop-Motion-Studio/releases/latest",
+  "releaseNotes": "",
+  "changelog": [
+    {
+      "version": "0.1.2",
+      "date": "2026-04-11",
+      "title": "Unreleased work in progress",
+      "highlights": [
+        "Reference overlays for single images, image sequences, and video with loop/hold playback controls.",
+        "Loop start/end comparison overlay with edge crossfade for seamless loop checks.",
+        "Timeline playhead click-and-drag scrubbing and wheel-navigation reliability fixes.",
+        "Sony CrSDK discovery, connection, live view, in-app capture transfer, and reliability hardening.",
+        "In-app updater powered by versions.json with startup popup and direct download action.",
+        "Camera integration UI now exposes backend, SDK/capture mode, and SDK-aware resolution behavior."
+      ]
+    },
+    {
+      "version": "0.1.1",
+      "date": "2026-04-06",
+      "title": "Avalonia migration, SDK discovery, project migration, and stability improvements",
+      "highlights": [
+        "Cross-platform migration from WPF to Avalonia for Windows, macOS, and Linux.",
+        "Advanced Nikon/Canon SDK discovery from local folders and archives.",
+        "Hardware-triggered still capture for supported Nikon cameras with auto timeline import.",
+        "Project loading plus automatic migration for older project structures.",
+        "Added composition overlays and improved frame-by-frame timeline navigation.",
+        "Refactored camera backend to ICameraAdapter architecture.",
+        "Capture mode update from TIFF + Proxy to PNG + Proxy for master files.",
+        "Startup crash and startup performance fixes for safer SDK discovery scans.",
+        "Performance and input improvements (histogram rewrite, keyboard debounce, UI responsiveness)."
+      ]
+    },
+    {
+      "version": "0.1.0",
+      "date": "2026-03-24",
+      "title": "Initial Windows release with capture pipeline, timeline, and integrations",
+      "highlights": [
+        "Initial .NET 10 Windows WPF application with DirectShow live camera preview.",
+        "Camera selection, start/stop controls, status feedback, and frame capture workflow.",
+        "Onion skin overlays, timeline/playback with scrubbing, and live luminance histogram.",
+        "Stream Deck integration for capture, onion toggle, opacity presets, and undo.",
+        "TIFF + Proxy and JPEG sequence capture workflows.",
+        "Nikon/Canon SDK folder layout and Nikon SDK discovery support.",
+        "Nikon NEF/NRW import pipeline to TIFF masters and JPG/PNG proxies.",
+        "Build/output restructuring to .artifacts and startup/build reliability fixes.",
+        "Improved error reporting and dedicated CHANGELOG introduction."
+      ]
+    }
+  ]
+}

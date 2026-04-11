@@ -38,6 +38,13 @@ namespace OpenStopMotionStudio.Core
         /// </summary>
         public double AlphaValue { get; set; } = 0.4;
 
+        /// <summary>
+        /// Transparenz des Referenz-Overlays (Video/Bildsequenz/Bild).
+        /// Getrennt vom Onion-Skin-Alpha, damit beide Ebenen unabhängig
+        /// eingestellt werden können.
+        /// </summary>
+        public double ReferenceAlphaValue { get; set; } = 0.4;
+
         // ── Grid Overlay ─────────────────────────────────────────────────────
 
         /// <summary>
@@ -82,6 +89,17 @@ namespace OpenStopMotionStudio.Core
         /// MVP: immer false. Phase 3: konfigurierbar.
         /// </summary>
         public bool ColorCodedMode { get; set; } = false;
+
+        /// <summary>
+        /// Aktiviert das Loop-Playback-Overlay (Vergleich erster/letzter Frame)
+        /// zur schnellen Kontrolle nahtloser Loops.
+        /// </summary>
+        public bool ShowLoopPlaybackOverlay { get; set; } = false;
+
+        /// <summary>
+        /// Transparenz für das Loop-Playback-Overlay.
+        /// </summary>
+        public double LoopPlaybackAlphaValue { get; set; } = 0.35;
 
         // ── Auflösungs-Tracking ──────────────────────────────────────────────
 

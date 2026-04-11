@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+    tags-ignore:
+      - "v*"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore Open-Stop-Motion-Studio.sln
+
+      - name: Build
+        run: dotnet build Open-Stop-Motion-Studio.sln --configuration Release --no-restore
+
+      - name: Test (if test projects exist)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t TEST_PROJECTS < <(find . -type f -name "*Tests*.csproj")
+
+          if [ ${#TEST_PROJECTS[@]} -eq 0 ]; then
+            echo "No test projects found."
+            exit 0
+          fi
+
+          for test_project in "${TEST_PROJECTS[@]}"; do
+            dotnet test "$test_project" --configuration Release --no-build --verbosity normal
+          done

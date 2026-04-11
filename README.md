@@ -6,6 +6,7 @@
 
 `CHANGELOG:` [CHANGELOG.md](CHANGELOG.md)  
 `Vendor SDK notes:` [SDKs/README.md](SDKs/README.md)
+`Update manifest:` [versions.json](versions.json)
 
 ---
 
@@ -15,7 +16,7 @@
 
 **Open Stop Motion Studio** is an open-source, cross-platform stop-motion application for hobby and professional workflows. This project is in an early but usable MVP state, with a focus on camera preview, frame capture, timeline playback, onion skinning, and initial RAW import capabilities.
 
-It is not yet a full replacement for tools like Dragonframe. Features such as EXR master output, tethered DSLR control, motion control, and DMX authoring are planned for future releases.
+It is not yet a full replacement for tools like Dragonframe. Features such as EXR master output, full tethered DSLR control across all supported vendors, motion control, and DMX authoring are planned for future releases.
 
 ## Current Feature Set
 
@@ -23,15 +24,18 @@ It is not yet a full replacement for tools like Dragonframe. Features such as EX
 
 - Live camera preview from connected webcams, USB cameras, capture cards, and virtual cameras.
 - Camera selection and device-specific settings dialogs.
+- SDK-aware camera backend status in the hardware view.
 - Live luminance histogram.
 - Status bar and a `start.bat` script for easy launching.
+- Startup update check via `versions.json`, including an in-app update popup with direct download action when a newer version is available.
+- `versions.json` now includes historical release changelog entries and points to a GitHub-hosted raw manifest URL for live update metadata.
 
 ### Stop-Motion Workflow
 
 - Frame capture with `Space`.
 - Sequential shot and frame naming.
 - Project folder selection.
-- Onion skinning with 1-3 layers and adjustable opacity.
+- Onion skinning with 1-5 layers, adjustable opacity, and optional color coding.
 - Undo support for the last captured frame.
 
 ### Timeline and Playback
@@ -39,19 +43,32 @@ It is not yet a full replacement for tools like Dragonframe. Features such as EX
 - Dope-sheet style timeline.
 - Playback controls with adjustable FPS (`1` to `120`).
 - Mouse-wheel scrubbing over the timeline (`Shift` for faster scrubbing).
+- Direct click-and-drag scrubbing on the timeline playhead.
 - Playback preview of captured frames.
+- Loop comparison overlay for checking seamless start/end transitions.
+
+### Reference Overlay
+
+- Reference overlay import from single images, image sequences, and video files.
+- Separate transparency controls for onion skin, reference overlay, and loop comparison overlay.
+- Loop and hold playback modes for reference sources.
 
 ### File Output
 
 - `JPEG sequence` capture mode.
-- `TIFF + Proxy` capture mode for higher quality workflows.
+- `PNG + Proxy` capture mode for higher quality workflows.
 - Shot-based naming for saved frames.
 - Internal frame-offset support (e.g., starting sequences at `1001`).
 
 ### RAW & Vendor SDKs
 
 - Local discovery of Canon, Nikon, and Sony SDKs from the `SDKs/` directory.
+- Windows device enumeration merges vendor SDK cameras into the selectable device list.
+- SDK-backed cameras expose backend/capture-mode status in the UI and use camera-native live-view resolution instead of manual resolution presets.
+- **Canon**: initial EDSDK session, live view, and still-capture transfer path are implemented, with fallback to the generic video backend.
 - **Nikon**: `NEF` / `NRW` folder import using the local Nikon Image SDK.
+- **Nikon**: initial MAID session, live view, and still capture path are implemented, with fallback to the generic video backend.
+- **Sony**: CrSDK camera enumeration, connection, live view, and in-app capture file delivery are implemented, with the generic backend kept as fallback where useful.
 - Import output to `Raw/<Shot>/...tif` and `Proxy/<Shot>/...jpg`.
 - Configurable import start frame.
 
@@ -139,6 +156,7 @@ OpenStopMotionStudio/
 ├── SDKs/                           // Folder for local vendor SDKs (see SDKs/README.md)
 ├── CHANGELOG.md
 ├── README.md
+├── versions.json
 ├── start.bat
 └── OpenStopMotionStudio.csproj
 ```
@@ -148,11 +166,25 @@ OpenStopMotionStudio/
 | Phase | Status | Focus |
 | --- | --- | --- |
 | 1 | done | Live preview, capture, onion skin, Stream Deck |
-| 2 | in progress | TIFF/proxy workflow, RAW import groundwork |
+| 2 | done | PNG/proxy workflow, resilient RAW import foundation (adapted approach) |
 | 3 | in progress | Timeline, playback, advanced onion skin |
-| 4 | planned | Tethered DSLR control and deeper camera SDK integration |
+| 4 | in progress | Tethered DSLR control and deeper camera SDK integration |
 | 5 | planned | Motion control (e.g., for camera sliders) |
 | 6 | planned | DMX lighting and other production tools |
+
+### Phase 2 Acceptance Criteria (adapted approach)
+
+- Capture output supports `JPEG sequence` and `PNG + Proxy` workflows.
+- Nikon RAW import (`NEF`/`NRW`) is integrated into the project workflow with start-frame and proxy-format options.
+- RAW import is resilient: single-file failures are skipped, successful files continue importing, and a warning summary is shown.
+- RAW import supports user cancellation via sidebar button and modal dialog.
+- RAW import progress is visible in a modal dialog with clear completion states (success, warning, canceled, error).
+
+### Current Progress Snapshot
+
+- Phase 2 (adapted): JPEG sequence and PNG+Proxy capture are implemented, Nikon NEF/NRW import pipeline is available and integrated in the project workflow.
+- Phase 3: Timeline playback, fast scrubbing, advanced onion skin (up to 5 layers), color-coded onion skin, reference overlay import (image sequence/video/single image), separate transparency controls, and loop comparison overlay are implemented.
+- Phase 4 (partial): Windows device enumeration integrates Canon EDSDK, Nikon MAID, and Sony CrSDK device support. Canon and Nikon have initial SDK live-view/still-capture paths, the UI surfaces backend/capture-mode state for SDK cameras, and Sony now supports CrSDK-based discovery, connection, live view, and in-app capture delivery.
 
 ---
 
@@ -162,7 +194,7 @@ OpenStopMotionStudio/
 
 **Open Stop Motion Studio** ist eine Open-Source, plattformübergreifende Stop-Motion-Anwendung für Hobby- und professionelle Workflows. Das Projekt befindet sich in einem frühen, aber nutzbaren MVP-Zustand, mit Fokus auf Kameravorschau, Frame-Aufnahme, Timeline-Playback, Onion Skinning und ersten RAW-Import-Fähigkeiten.
 
-Es ist noch kein vollständiger Ersatz für Werkzeuge wie Dragonframe. Funktionen wie EXR-Master-Ausgabe, angebundene DSLR-Steuerung, Motion Control und DMX-Authoring sind für zukünftige Versionen geplant.
+Es ist noch kein vollständiger Ersatz für Werkzeuge wie Dragonframe. Funktionen wie EXR-Master-Ausgabe, vollständige angebundene DSLR-Steuerung über alle unterstützten Hersteller hinweg, Motion Control und DMX-Authoring sind für zukünftige Versionen geplant.
 
 ## Aktueller Funktionsstand
 
@@ -170,15 +202,18 @@ Es ist noch kein vollständiger Ersatz für Werkzeuge wie Dragonframe. Funktione
 
 - Live-Kameravorschau von angeschlossenen Webcams, USB-Kameras, Capture Cards und virtuellen Kameras.
 - Kameraauswahl und gerätespezifische Einstellungsdialoge.
+- SDK-bewusste Anzeige von Kamera-Backend und Capture-Modus im Hardware-Tab.
 - Live-Luminanz-Histogramm.
 - Statusleiste und ein `start.bat`-Skript für einfaches Starten.
+- Update-Prüfung beim Start über `versions.json`, inklusive In-App-Popup mit direkter Download-Aktion bei einer neueren Version.
+- `versions.json` enthaelt jetzt historische Release-ChangeLogs und verweist auf eine gehostete GitHub-Raw-Manifest-URL fuer Live-Update-Metadaten.
 
 ### Stop-Motion-Workflow
 
 - Frame-Aufnahme mit der `Leertaste`.
 - Fortlaufende Benennung von Shots und Frames.
 - Auswahl des Projektordners.
-- Onion Skinning mit 1-3 Layern und einstellbarer Deckkraft.
+- Onion Skinning mit 1-5 Layern, einstellbarer Deckkraft und optionaler Farbcodierung.
 - Undo-Funktion für das zuletzt aufgenommene Frame.
 
 ### Timeline und Playback
@@ -186,19 +221,32 @@ Es ist noch kein vollständiger Ersatz für Werkzeuge wie Dragonframe. Funktione
 - Zeitleiste im Dope-Sheet-Stil.
 - Playback-Steuerung mit einstellbaren FPS (`1` bis `120`).
 - Scrubbing per Mausrad über die Timeline (`Shift` für schnelleres Scrubbing).
+- Direktes Klick-und-Drag-Scrubbing auf dem Timeline-Playhead.
 - Playback-Vorschau der aufgenommenen Frames.
+- Loop-Vergleichs-Overlay zur Kontrolle nahtloser Übergänge zwischen Start und Ende.
+
+### Referenz-Overlay
+
+- Import von Einzelbildern, Bildsequenzen und Videos als Referenz-Overlay.
+- Getrennte Transparenzregler für Onion Skin, Referenz-Overlay und Loop-Vergleich.
+- Loop- und Hold-Wiedergabemodi für Referenzquellen.
 
 ### Dateiausgabe
 
 - `JPEG sequence`-Aufnahmemodus.
-- `TIFF + Proxy`-Aufnahmemodus für Workflows mit höherer Qualität.
+- `PNG + Proxy`-Aufnahmemodus für Workflows mit höherer Qualität.
 - Shot-basierte Benennung für gespeicherte Frames.
 - Interner Frame-Offset (z.B. um Sequenzen bei `1001` zu starten).
 
 ### RAW & Hersteller-SDKs
 
 - Lokale Erkennung von Canon-, Nikon- und Sony-SDKs aus dem `SDKs/`-Verzeichnis.
+- Unter Windows werden erkannte Hersteller-SDK-Kameras in die auswählbare Geräteliste integriert.
+- SDK-Kameras zeigen Backend-/Capture-Status in der UI an und nutzen für Live-View die native Kamera-Auflösung statt manueller Auflösungs-Presets.
+- **Canon**: erste EDSDK-Session mit Live-View- und Still-Capture-Transferpfad ist umgesetzt, mit Fallback auf das generische Video-Backend.
 - **Nikon**: `NEF`- / `NRW`-Ordnerimport über das lokale Nikon Image SDK.
+- **Nikon**: erste MAID-Session mit Live-View- und Still-Capture-Pfad ist umgesetzt, mit Fallback auf das generische Video-Backend.
+- **Sony**: CrSDK-Kameraerkennung, Verbindung, Live-View und die Dateiübergabe von Captures an die App sind umgesetzt; das generische Backend bleibt als Fallback erhalten, wo es sinnvoll ist.
 - Import-Ausgabe nach `Raw/<Shot>/...tif` und `Proxy/<Shot>/...jpg`.
 - Konfigurierbarer Startframe für den Import.
 
@@ -286,6 +334,7 @@ OpenStopMotionStudio/
 ├── SDKs/                           // Ordner für lokale Hersteller-SDKs (siehe SDKs/README.md)
 ├── CHANGELOG.md
 ├── README.md
+├── versions.json
 ├── start.bat
 └── OpenStopMotionStudio.csproj
 ```
@@ -295,11 +344,25 @@ OpenStopMotionStudio/
 | Phase | Status | Fokus |
 | --- | --- | --- |
 | 1 | fertig | Live-Vorschau, Capture, Onion Skin, Stream Deck |
-| 2 | in Arbeit | TIFF/Proxy-Workflow, RAW-Import-Fundament |
+| 2 | fertig | PNG/Proxy-Workflow, robustes RAW-Import-Fundament (angepasster Ansatz) |
 | 3 | in Arbeit | Timeline, Playback, Advanced Onion Skin |
-| 4 | geplant | Tethered DSLR-Steuerung und tiefere Kamera-SDK-Integration |
+| 4 | in Arbeit | Tethered DSLR-Steuerung und tiefere Kamera-SDK-Integration |
 | 5 | geplant | Motion Control (z.B. für Kamera-Slider) |
 | 6 | geplant | DMX-Licht und weitere Produktionstools |
+
+### Phase-2-Akzeptanzkriterien (angepasster Ansatz)
+
+- Dateiausgabe unterstützt `JPEG sequence` und `PNG + Proxy`.
+- Nikon-RAW-Import (`NEF`/`NRW`) ist in den Projektworkflow integriert (Startframe und Proxy-Format einstellbar).
+- RAW-Import ist fehlertolerant: Einzeldatei-Fehler werden übersprungen, erfolgreiche Dateien laufen weiter, Warnzusammenfassung wird angezeigt.
+- RAW-Import kann vom Nutzer abgebrochen werden (Sidebar-Button und modales Fortschrittsfenster).
+- RAW-Import-Fortschritt ist sichtbar und zeigt klare Abschlusszustände (Erfolg, Warnung, Abbruch, Fehler).
+
+### Aktueller Fortschritt
+
+- Phase 2 (angepasst): JPEG-Sequence und PNG+Proxy-Capture sind umgesetzt, die Nikon-NEF/NRW-Importpipeline ist in den Projektworkflow integriert.
+- Phase 3: Timeline-Playback, schnelles Scrubbing, erweitertes Onion Skinning (bis zu 5 Layer), farbcodiertes Onion Skinning, Referenz-Overlay-Import (Bildsequenz/Video/Einzelbild), getrennte Transparenzsteuerung und Loop-Vergleichs-Overlay sind umgesetzt.
+- Phase 4 (teilweise): Unter Windows sind Canon-EDSDK-, Nikon-MAID- und Sony-CrSDK-Gerätepfade in die Geräteauflistung integriert. Canon und Nikon besitzen erste SDK-Pfade für Live-View und Still-Capture, die UI zeigt Backend- und Capture-Modus für SDK-Kameras an, und Sony unterstützt jetzt CrSDK-basierte Kameraerkennung, Verbindung, Live-View und Capture-Import in die App.
 
 ## Mitwirken
 

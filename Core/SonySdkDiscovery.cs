@@ -53,8 +53,15 @@ namespace OpenStopMotionStudio.Core
             if (sdkLocation == null)
                 return Array.Empty<SonySdkDevice>();
 
-            // return SonyCrSdkRuntime.EnumerateConnectedCameras(sdkLocation);
-            return Array.Empty<SonySdkDevice>(); // Placeholder
+            try
+            {
+                return SonyCrSdkRuntime.EnumerateConnectedCameras(sdkLocation);
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Instance.LogInfo("SonySdkDiscovery", $"Sony CrSDK enumeration failed: {ex.Message}");
+                return Array.Empty<SonySdkDevice>();
+            }
         }
 
         private static IEnumerable<string> EnumerateCandidateRoots()

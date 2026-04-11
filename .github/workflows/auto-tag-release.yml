@@ -1,0 +1,155 @@
+name: Auto Version Tag
+
+on:
+  push:
+    branches:
+      - "**"
+
+permissions:
+  contents: write
+
+jobs:
+  version-and-tag:
+    name: Calculate SemVer and create tag
+    if: github.ref_type == 'branch' && github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Determine next version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch --tags origin
+          LAST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n 1 || true)
+
+          if [ -z "$LAST_TAG" ]; then
+            BASE_VERSION="none"
+            COMMIT_LOG=$(git log --pretty=format:'%s%n%b')
+          else
+            BASE_VERSION="${LAST_TAG#v}"
+            COMMIT_LOG=$(git log "${LAST_TAG}..HEAD" --pretty=format:'%s%n%b')
+          fi
+
+          if [ -z "$COMMIT_LOG" ]; then
+            echo "No commits since last tag; skipping tag creation."
+            echo "base_version=${BASE_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "should_tag=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          RELEASE_KIND=""
+
+          # Conventional Commit detection priority:
+          # 1) BREAKING CHANGE / type! -> major
+          # 2) feat -> minor
+          # 3) fix/perf/refactor -> patch
+          if echo "$COMMIT_LOG" | grep -Eiq 'BREAKING CHANGE:|^[a-z]+(\([^)]+\))?!:'; then
+            RELEASE_KIND="release"
+          elif echo "$COMMIT_LOG" | grep -Eiq '^feat(\([^)]+\))?:'; then
+            RELEASE_KIND="update"
+          elif echo "$COMMIT_LOG" | grep -Eiq '^(fix|perf|refactor)(\([^)]+\))?:'; then
+            RELEASE_KIND="hotfix"
+          fi
+
+          # Legacy fallback for existing commit style
+          if [ -z "$RELEASE_KIND" ] && echo "$COMMIT_LOG" | grep -Eiq '(^|[^a-z])(release)([^a-z]|$)'; then
+            RELEASE_KIND="release"
+          elif [ -z "$RELEASE_KIND" ] && echo "$COMMIT_LOG" | grep -Eiq '(^|[^a-z])(update)([^a-z]|$)'; then
+            RELEASE_KIND="update"
+          elif [ -z "$RELEASE_KIND" ] && echo "$COMMIT_LOG" | grep -Eiq '(^|[^a-z])(hotfix)([^a-z]|$)'; then
+            RELEASE_KIND="hotfix"
+          fi
+
+          if [ -z "$RELEASE_KIND" ]; then
+            echo "No SemVer signal found. Use Conventional Commits (feat/fix/perf/refactor, BREAKING CHANGE) or legacy Release/Update/Hotfix keywords."
+            echo "base_version=${BASE_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "release_kind=none" >> "$GITHUB_OUTPUT"
+            echo "should_tag=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$BASE_VERSION" = "none" ]; then
+            case "$RELEASE_KIND" in
+              release)
+                NEXT_VERSION="1.0.0"
+                ;;
+              update)
+                NEXT_VERSION="0.1.0"
+                ;;
+              hotfix)
+                NEXT_VERSION="0.0.1"
+                ;;
+            esac
+          else
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
+
+            case "$RELEASE_KIND" in
+              release)
+                MAJOR=$((MAJOR + 1))
+                MINOR=0
+                PATCH=0
+                ;;
+              update)
+                MINOR=$((MINOR + 1))
+                PATCH=0
+                ;;
+              hotfix)
+                PATCH=$((PATCH + 1))
+                ;;
+            esac
+
+            NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          fi
+
+          NEXT_TAG="v${NEXT_VERSION}"
+
+          if git rev-parse -q --verify "refs/tags/${NEXT_TAG}" >/dev/null; then
+            echo "Tag ${NEXT_TAG} already exists; skipping."
+            echo "base_version=${BASE_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "release_kind=${RELEASE_KIND}" >> "$GITHUB_OUTPUT"
+            echo "next_version=${NEXT_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "next_tag=${NEXT_TAG}" >> "$GITHUB_OUTPUT"
+            echo "should_tag=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "base_version=${BASE_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "release_kind=${RELEASE_KIND}" >> "$GITHUB_OUTPUT"
+          echo "next_version=${NEXT_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "next_tag=${NEXT_TAG}" >> "$GITHUB_OUTPUT"
+          echo "should_tag=true" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag
+        if: steps.version.outputs.should_tag == 'true'
+        shell: bash
+        env:
+          TAG_NAME: ${{ steps.version.outputs.next_tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+          git push origin "refs/tags/$TAG_NAME"
+
+      - name: Write summary
+        shell: bash
+        run: |
+          {
+            echo "## Auto Version Tag"
+            echo
+            echo "- Last version: ${{ steps.version.outputs.base_version || 'none' }}"
+            echo "- Release kind: ${{ steps.version.outputs.release_kind || 'n/a' }}"
+            echo "- New tag: ${{ steps.version.outputs.next_tag || 'none' }}"
+            echo "- Tag created: ${{ steps.version.outputs.should_tag || 'false' }}"
+            echo
+            echo "Conventional Commits: BREAKING/type! -> major, feat -> minor, fix/perf/refactor -> patch"
+            echo "Legacy fallback keywords: Release, Update, Hotfix"
+            echo "Initial bootstrap mapping: major -> v1.0.0, minor -> v0.1.0, patch -> v0.0.1"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,64 +1,190 @@
-name: Build and Release EXE
+name: Release
 
 on:
   push:
     tags:
-      - 'v*' # Trigger bei Tags wie v0.1.1, v1.0 etc.
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Tag to release (for example v1.2.3)"
+        required: true
+        type: string
 
 permissions:
-  contents: write # Wichtig für das Erstellen von Releases auf Job-Ebene
+  contents: write
 
 jobs:
-  # JOB 1: Changelog auslesen und Release vorbereiten
   prepare:
+    name: Resolve tag and release notes
     runs-on: ubuntu-latest
     outputs:
-      changelog: ${{ steps.git_log.outputs.changelog }}
+      tag_name: ${{ steps.tag.outputs.tag_name }}
+      release_title: ${{ steps.notes.outputs.release_title }}
+      release_kind: ${{ steps.notes.outputs.release_kind }}
+      release_body: ${{ steps.notes.outputs.body }}
+
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - name: Get Git Changelog
-        id: git_log
+      - name: Resolve release tag
+        id: tag
         shell: bash
-        run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)
-          LOG=$(git log $LAST_TAG..HEAD --oneline --pretty=format:'- %s')
-          
-          # Sicherer Export für mehrzeilige Texte (verhindert GitHub-Warnungen)
-          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-          echo "changelog<<$EOF" >> $GITHUB_OUTPUT
-          echo "$LOG" >> $GITHUB_OUTPUT
-          echo "$EOF" >> $GITHUB_OUTPUT
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          body: |
-            ### Änderungen in dieser Version:
-            ${{ steps.git_log.outputs.changelog }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TAG: ${{ inputs.tag_name }}
+        run: |
+          set -euo pipefail
 
-      - name: Discord Changelog Notification
-        uses: sarisia/actions-status-discord@v1
-        with:
-          webhook: ${{ secrets.DISCORD_WEBHOOK_CHANGELOG }}
-          status: success
-          title: "📝 Changelog für ${{ github.ref_name }}"
-          description: |
-            **Änderungen:**
-            ${{ steps.git_log.outputs.changelog }}
-          color: 0x3498db
+          if [ -n "${INPUT_TAG:-}" ]; then
+            TAG_NAME="${INPUT_TAG}"
+          else
+            TAG_NAME="${GITHUB_REF_NAME}"
+          fi
 
-  # JOB 2: Kompilieren für alle Betriebssysteme
+          if [[ ! "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid tag '$TAG_NAME'. Expected vX.Y.Z"
+            exit 1
+          fi
+
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Build release notes
+        id: notes
+        shell: bash
+        env:
+          TAG_NAME: ${{ steps.tag.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+
+          git fetch --tags origin
+          PREVIOUS_TAG=$(git tag --list 'v*' --sort=-v:refname | grep -Fxv "$TAG_NAME" | head -n 1 || true)
+
+          CURRENT_VERSION="${TAG_NAME#v}"
+          IFS='.' read -r CURRENT_MAJOR CURRENT_MINOR CURRENT_PATCH <<< "$CURRENT_VERSION"
+
+          if [ -n "$PREVIOUS_TAG" ]; then
+            PREVIOUS_VERSION="${PREVIOUS_TAG#v}"
+            IFS='.' read -r PREVIOUS_MAJOR PREVIOUS_MINOR PREVIOUS_PATCH <<< "$PREVIOUS_VERSION"
+          else
+            PREVIOUS_VERSION="none"
+            PREVIOUS_MAJOR=0
+            PREVIOUS_MINOR=0
+            PREVIOUS_PATCH=0
+          fi
+
+          RELEASE_KIND="Release"
+
+          if [ "$PREVIOUS_VERSION" = "none" ]; then
+            case "$CURRENT_VERSION" in
+              0.1.0)
+                RELEASE_KIND="Update"
+                ;;
+              0.0.1)
+                RELEASE_KIND="Hotfix"
+                ;;
+              *)
+                RELEASE_KIND="Release"
+                ;;
+            esac
+          elif [ "$CURRENT_MAJOR" -gt "$PREVIOUS_MAJOR" ]; then
+            RELEASE_KIND="Release"
+          elif [ "$CURRENT_MINOR" -gt "$PREVIOUS_MINOR" ]; then
+            RELEASE_KIND="Update"
+          elif [ "$CURRENT_PATCH" -gt "$PREVIOUS_PATCH" ]; then
+            RELEASE_KIND="Hotfix"
+          fi
+
+          if [ -n "$PREVIOUS_TAG" ]; then
+            RANGE="$PREVIOUS_TAG..$TAG_NAME"
+          else
+            RANGE="$TAG_NAME"
+          fi
+
+          SUBJECTS=$(git log "$RANGE" --pretty=format:'%s' || true)
+
+          BREAKING=$(echo "$SUBJECTS" | grep -Ei '^[a-z]+(\([^)]+\))?!:|breaking change' | sed 's/^/- /' || true)
+          FEATURES=$(echo "$SUBJECTS" | grep -Ei '^feat(\([^)]+\))?:' | sed 's/^/- /' || true)
+          FIXES=$(echo "$SUBJECTS" | grep -Ei '^(fix|perf|refactor)(\([^)]+\))?:' | sed 's/^/- /' || true)
+          DOCS=$(echo "$SUBJECTS" | grep -Ei '^docs(\([^)]+\))?:' | sed 's/^/- /' || true)
+          CHORE=$(echo "$SUBJECTS" | grep -Ei '^chore(\([^)]+\))?:' | sed 's/^/- /' || true)
+          CI=$(echo "$SUBJECTS" | grep -Ei '^ci(\([^)]+\))?:' | sed 's/^/- /' || true)
+          BUILD_CHANGES=$(echo "$SUBJECTS" | grep -Ei '^build(\([^)]+\))?:' | sed 's/^/- /' || true)
+          OTHERS=$(echo "$SUBJECTS" | grep -Eiv '^[a-z]+(\([^)]+\))?!:|breaking change|^feat(\([^)]+\))?:|^(fix|perf|refactor)(\([^)]+\))?:|^docs(\([^)]+\))?:|^chore(\([^)]+\))?:|^ci(\([^)]+\))?:|^build(\([^)]+\))?:' | sed '/^\s*$/d; s/^/- /' || true)
+
+          if [ -z "$SUBJECTS" ]; then
+            OTHERS='- Initial release'
+          fi
+
+          {
+            echo "release_kind=$RELEASE_KIND"
+            echo "release_title=Open Stop Motion Studio ${RELEASE_KIND} ${TAG_NAME}"
+            echo "body<<EOF"
+            echo "## Open Stop Motion Studio ${RELEASE_KIND} ${TAG_NAME}"
+            echo
+            echo "- Release type: ${RELEASE_KIND}"
+            echo "- Previous version: ${PREVIOUS_VERSION}"
+            echo "- Current version: ${CURRENT_VERSION}"
+            echo
+            if [ -n "$BREAKING" ]; then
+              echo "### Breaking Changes"
+              echo "$BREAKING"
+              echo
+            fi
+            if [ -n "$FEATURES" ]; then
+              echo "### Features"
+              echo "$FEATURES"
+              echo
+            fi
+            if [ -n "$FIXES" ]; then
+              echo "### Fixes and Improvements"
+              echo "$FIXES"
+              echo
+            fi
+            if [ -n "$DOCS" ]; then
+              echo "### Documentation"
+              echo "$DOCS"
+              echo
+            fi
+            if [ -n "$OTHERS" ]; then
+              echo "### Other Changes"
+              echo "$OTHERS"
+              echo
+            fi
+
+            if [ -n "$CHORE$CI$BUILD_CHANGES" ]; then
+              echo "### Technical Changes"
+              echo
+            fi
+            if [ -n "$CHORE" ]; then
+              echo "#### Maintenance"
+              echo "$CHORE"
+              echo
+            fi
+            if [ -n "$CI" ]; then
+              echo "#### CI"
+              echo "$CI"
+              echo
+            fi
+            if [ -n "$BUILD_CHANGES" ]; then
+              echo "#### Build System"
+              echo "$BUILD_CHANGES"
+              echo
+            fi
+            echo "### Build"
+            echo "- .NET 10"
+            echo "- Avalonia UI"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
   build:
+    name: Publish binaries (${{ matrix.rid }})
     needs: prepare
     runs-on: ${{ matrix.os }}
     strategy:
-      # Matrix definiert die Kombinationen aus OS und .NET Runtime Identifier (RID)
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
@@ -66,56 +192,122 @@ jobs:
           - os: ubuntu-latest
             rid: linux-x64
           - os: macos-latest
-            rid: osx-x64     # Für ältere Intel-Macs
+            rid: osx-x64
           - os: macos-latest
-            rid: osx-arm64   # Für moderne Apple Silicon Macs (M1/M2/M3...)
-            
+            rid: osx-arm64
+
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
       - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '10.0.x' # Aktualisiert auf .NET 10
+          dotnet-version: 10.0.x
 
-      - name: Publish App
-        run: dotnet publish "OpenStopMotionStudio.csproj" -c Release -r ${{ matrix.rid }} --self-contained true /p:PublishSingleFile=true -o ./publish-folder
+      - name: Publish app
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet publish OpenStopMotionStudio.csproj -c Release -r ${{ matrix.rid }} --self-contained true /p:PublishSingleFile=true -o ./publish-folder
 
-      # Windows packt als .zip
-      - name: Zip Release (Windows)
+      - name: Archive release (Windows)
         if: matrix.os == 'windows-latest'
+        shell: pwsh
+        env:
+          TAG_NAME: ${{ needs.prepare.outputs.tag_name }}
         run: |
-          $VERSION = "${{ github.ref_name }}".Substring(1)
-          Compress-Archive -Path ./publish-folder/* -DestinationPath OSMS-${{ matrix.rid }}-v$VERSION.zip
+          $version = $env:TAG_NAME.Substring(1)
+          $name = "OSMS-${{ matrix.rid }}-v$version.zip"
+          Compress-Archive -Path ./publish-folder/* -DestinationPath $name
 
-      # Linux und macOS packen als .tar.gz (besserer Standard für Unix-Systeme)
-      - name: Tar Release (Linux & macOS)
+      - name: Archive release (Linux/macOS)
         if: matrix.os != 'windows-latest'
+        shell: bash
+        env:
+          TAG_NAME: ${{ needs.prepare.outputs.tag_name }}
         run: |
-          VERSION=${GITHUB_REF_NAME#v}
-          tar -czvf OSMS-${{ matrix.rid }}-v$VERSION.tar.gz -C ./publish-folder .
+          set -euo pipefail
+          VERSION="${TAG_NAME#v}"
+          tar -czf "OSMS-${{ matrix.rid }}-v${VERSION}.tar.gz" -C ./publish-folder .
 
-      - name: Upload to Release
-        uses: softprops/action-gh-release@v2
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          # Lädt alle erzeugten Archive in das im Job "prepare" erstellte Release hoch
-          files: |
+          name: release-${{ matrix.rid }}
+          path: |
             *.zip
             *.tar.gz
+
+  publish:
+    name: Publish GitHub release
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Publish release
+        shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ needs.prepare.outputs.tag_name }}
+          RELEASE_TITLE: ${{ needs.prepare.outputs.release_title }}
+          RELEASE_BODY: ${{ needs.prepare.outputs.release_body }}
+        run: |
+          set -euo pipefail
 
-  # JOB 3: Finale Benachrichtigung
-  notify:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Discord Release Notification
-        uses: sarisia/actions-status-discord@v1
-        with:
-          webhook: ${{ secrets.DISCORD_WEBHOOK_RELEASE }}
-          status: success
-          title: "🚀 Neues Release: ${{ github.ref_name }}"
-          description: "Open Stop Motion Studio v${{ github.ref_name }} wurde veröffentlicht (Win, Mac & Linux)! [Zum Download auf GitHub](${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }})"
-          color: 0x00ff00
+          NOTES_FILE="$(mktemp)"
+          printf '%s\n' "$RELEASE_BODY" > "$NOTES_FILE"
+
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release edit "$TAG_NAME" --title "$RELEASE_TITLE" --notes-file "$NOTES_FILE"
+          else
+            gh release create "$TAG_NAME" --title "$RELEASE_TITLE" --notes-file "$NOTES_FILE"
+          fi
+
+          find dist -type f \( -name '*.zip' -o -name '*.tar.gz' \) -print0 | while IFS= read -r -d '' file; do
+            gh release upload "$TAG_NAME" "$file" --clobber
+          done
+
+      - name: Push changelog to Discord
+        shell: bash
+        env:
+          WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_CHANGELOG }}
+          TAG_NAME: ${{ needs.prepare.outputs.tag_name }}
+          RELEASE_TITLE: ${{ needs.prepare.outputs.release_title }}
+          RELEASE_KIND: ${{ needs.prepare.outputs.release_kind }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${WEBHOOK_URL:-}" ]; then
+            echo "DISCORD_WEBHOOK_CHANGELOG is empty; skipping changelog push."
+            exit 0
+          fi
+
+          MESSAGE="${RELEASE_TITLE}\\nTag: ${TAG_NAME}\\nType: ${RELEASE_KIND}"
+          PAYLOAD=$(python3 -c 'import json, os; print(json.dumps({"content": os.environ["MESSAGE"]}))')
+          curl -sS -X POST "$WEBHOOK_URL" -H "Content-Type: application/json" -d "$PAYLOAD" >/dev/null
+
+      - name: Push release link to Discord
+        shell: bash
+        env:
+          WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_RELEASE }}
+          TAG_NAME: ${{ needs.prepare.outputs.tag_name }}
+          RELEASE_TITLE: ${{ needs.prepare.outputs.release_title }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${WEBHOOK_URL:-}" ]; then
+            echo "DISCORD_WEBHOOK_RELEASE is empty; skipping release push."
+            exit 0
+          fi
+
+          RELEASE_URL="https://github.com/${REPOSITORY}/releases/tag/${TAG_NAME}"
+          MESSAGE="${RELEASE_TITLE}\\n${RELEASE_URL}"
+          PAYLOAD=$(python3 -c 'import json, os; print(json.dumps({"content": os.environ["MESSAGE"]}))')
+          curl -sS -X POST "$WEBHOOK_URL" -H "Content-Type: application/json" -d "$PAYLOAD" >/dev/null

@@ -15,6 +15,9 @@ using Avalonia.Platform;
 using Avalonia.Media;
 using System.Reflection;
 using System.Resources;
+using System.IO;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace OpenStopMotionStudio.GUI
 {
@@ -23,10 +26,26 @@ namespace OpenStopMotionStudio.GUI
         private readonly CameraManager _camera = CameraManager.Instance;
         private readonly CaptureManager _capture = new();
         private readonly OverlayManager _overlay = new();
+        private readonly ReferenceOverlayProvider _referenceOverlay = new();
         private readonly StreamDeckManager _streamDeck = new();
         private readonly DispatcherTimer _playbackTimer = new();
         private readonly ResourceManager _resourceManager = new("OpenStopMotionStudio.Localization.Strings", typeof(MainWindow).Assembly);
         private readonly ProjectMigrationService _projectMigration = new();
+        private Bitmap? _referenceLoopIcon;
+        private Bitmap? _referenceHoldIcon;
+        private Bitmap? _tabCaptureIcon;
+        private Bitmap? _tabOnionOverlayIcon;
+        private Bitmap? _tabProjectRawIcon;
+        private Bitmap? _tabHardwareIcon;
+        private readonly Dictionary<string, Bitmap> _tintedOnionCache = new();
+        private static readonly Color[] OnionTintPalette =
+        {
+            Color.Parse("#FF4A4A"),
+            Color.Parse("#4A8CFF"),
+            Color.Parse("#45D18A"),
+            Color.Parse("#F7A531"),
+            Color.Parse("#D86CFF")
+        };
 
         private Image[] _onionSkinLayers = Array.Empty<Image>();
         private List<CameraDeviceDescriptor> _cameraDevices = new();
@@ -67,7 +86,14 @@ namespace OpenStopMotionStudio.GUI
             DebugLogger.Instance.LogInfo("Startup", $"Open Stop Motion Studio {appVersion} initialized");
             DebugLogger.Instance.LogInfo("Startup", $"Log file: {DebugLogger.Instance.GetLogFilePath()}");
             
-            _onionSkinLayers = new[] { OnionSkinImageLayer1, OnionSkinImageLayer2, OnionSkinImageLayer3 };
+            _onionSkinLayers = new[]
+            {
+                OnionSkinImageLayer1,
+                OnionSkinImageLayer2,
+                OnionSkinImageLayer3,
+                OnionSkinImageLayer4,
+                OnionSkinImageLayer5
+            };
 
             _camera.FrameReady += OnFrameReady;
             _camera.ImageCaptured += OnCameraImageCaptured;
@@ -84,6 +110,11 @@ namespace OpenStopMotionStudio.GUI
             OnionLayerComboBox.SelectedIndex = 0;
             _overlay.OnionLayers = 1;
             _overlay.AlphaValue = AlphaSlider.Value / 100.0;
+            _overlay.ReferenceAlphaValue = ReferenceAlphaSlider.Value / 100.0;
+            _overlay.LoopPlaybackAlphaValue = LoopOverlayAlphaSlider.Value / 100.0;
+            ReferenceOverlayInfoText.Text = _referenceOverlay.SourceLabel;
+            UpdateTabIcons();
+            UpdateReferencePlaybackModeButton();
 
             PlaybackFpsTextBox.Text = DefaultPlaybackFps.ToString();
             ApplyPlaybackFpsFromInput();
@@ -94,6 +125,7 @@ namespace OpenStopMotionStudio.GUI
             InitializeRawImportUi();
             UpdateFrameCounterText();
             RefreshTimelineState();
+            UpdateCameraIntegrationStatus();
 
             _uiReady = true;
             _ = RefreshCameraListAsync();
@@ -161,6 +193,7 @@ namespace OpenStopMotionStudio.GUI
                 CameraComboBox.IsEnabled = true;
                 CameraComboBox.SelectedIndex = 0;
                 StartCameraButton.IsEnabled = true;
+                UpdateCameraIntegrationStatus();
             }
             catch (Exception ex)
             {
@@ -170,6 +203,7 @@ namespace OpenStopMotionStudio.GUI
                 CameraComboBox.SelectedIndex = 0;
                 CameraComboBox.IsEnabled = false;
                 StartCameraButton.IsEnabled = false;
+                UpdateCameraIntegrationStatus();
             }
             finally
             {
@@ -193,6 +227,8 @@ namespace OpenStopMotionStudio.GUI
                 ResetHistogramPreview(_resourceManager.GetString("CameraSwitched_Message") ?? "Kamera gewechselt");
                 SetStatus(_resourceManager.GetString("CameraSelectionChanged_Message") ?? "Kameraauswahl geändert.");
             }
+
+            UpdateCameraIntegrationStatus();
 
             StopPlaybackInternal();
             HidePlaybackPreview();
@@ -218,6 +254,17 @@ namespace OpenStopMotionStudio.GUI
                     ResolutionComboBox.Items.Add("Keine Kamera ausgewählt");
                     ResolutionComboBox.SelectedIndex = 0;
                     ResolutionComboBox.IsEnabled = false;
+                    ResolutionHintText.Text = "Keine Kamera ausgewählt.";
+                    return;
+                }
+
+                CameraDeviceDescriptor? descriptor = GetSelectedCameraDescriptor();
+                if (IsSdkBackedCamera(descriptor))
+                {
+                    ResolutionComboBox.Items.Add("SDK-Live-View: native Kamera-Auflösung");
+                    ResolutionComboBox.SelectedIndex = 0;
+                    ResolutionComboBox.IsEnabled = false;
+                    ResolutionHintText.Text = "Bei SDK-Kameras wird die native Kamera-Auflösung verwendet. Die manuelle Auswahl ist hier deaktiviert.";
                     return;
                 }
 
@@ -232,6 +279,7 @@ namespace OpenStopMotionStudio.GUI
                     ResolutionComboBox.Items.Add("Keine Auflösungen verfügbar");
                     ResolutionComboBox.SelectedIndex = 0;
                     ResolutionComboBox.IsEnabled = false;
+                    ResolutionHintText.Text = "Für diese Kamera wurden keine manuellen Auflösungen gefunden.";
                     return;
                 }
 
@@ -249,6 +297,7 @@ namespace OpenStopMotionStudio.GUI
 
                 int preferredIndex = resolutions.FindIndex(r => r.Equals(preferredResolution));
                 ResolutionComboBox.SelectedIndex = preferredIndex >= 0 ? preferredIndex : 0;
+                ResolutionHintText.Text = "Auflösung vor dem Start wählen.";
                 SetStatus($"Auflösungen geladen: {resolutions.Count} verfügbar");
             }
             catch (Exception ex)
@@ -257,6 +306,7 @@ namespace OpenStopMotionStudio.GUI
                 ResolutionComboBox.Items.Add("Fehler beim Laden");
                 ResolutionComboBox.SelectedIndex = 0;
                 ResolutionComboBox.IsEnabled = false;
+                ResolutionHintText.Text = "Auflösungen konnten nicht geladen werden.";
             }
         }
 
@@ -291,6 +341,7 @@ namespace OpenStopMotionStudio.GUI
                     NoCameraText.IsVisible = true;
                     ResetHistogramPreview();
                     RefreshTimelineState();
+                    UpdateCameraIntegrationStatus();
                     SetStatus(_resourceManager.GetString("CameraStopped_Message") ?? "Kamera gestoppt.");
                     return;
                 }
@@ -309,6 +360,7 @@ namespace OpenStopMotionStudio.GUI
                     NoCameraText.IsVisible = true;
                     ResetHistogramPreview(_resourceManager.GetString("WaitingForLiveImage_Message") ?? "Warte auf Live-Bild");
                     RefreshTimelineState();
+                    UpdateCameraIntegrationStatus();
                     SetStatus(string.Format(_resourceManager.GetString("CameraActive_Message") ?? "Kamera aktiv: {0}", CameraComboBox.SelectedItem));
                 }
                 else
@@ -343,6 +395,7 @@ namespace OpenStopMotionStudio.GUI
                     LiveFeedImage.InvalidateVisual();
                     NoCameraText.IsVisible = false;
                     RefreshOnionSkinPreview();
+                    RefreshReferenceOverlayPreview();
                     RefreshHistogramPreview(liveFrame);
                     RefreshOverlayCanvas();
                 }
@@ -429,9 +482,43 @@ namespace OpenStopMotionStudio.GUI
 
         private void TimelineCanvas_PointerPressed(object? sender, PointerPressedEventArgs e)
         {
-            // Set focus to timeline when canvas is clicked
             TimelineScrollViewer.Focus();
-            DebugLogger.Instance.Log("[ACTION] Focus set to TimelineScrollViewer via Canvas");
+
+            var point = e.GetCurrentPoint(TimelineCanvas);
+            if (!point.Properties.IsLeftButtonPressed)
+                return;
+
+            _isTimelinePointerScrubbing = true;
+            e.Pointer.Capture(TimelineCanvas);
+            UpdateTimelineFromPointerPosition(point.Position, announce: false);
+            DebugLogger.Instance.Log("[ACTION] Timeline pointer scrubbing started");
+            e.Handled = true;
+        }
+
+        private void TimelineCanvas_PointerMoved(object? sender, PointerEventArgs e)
+        {
+            if (!_isTimelinePointerScrubbing)
+                return;
+
+            UpdateTimelineFromPointerPosition(e.GetPosition(TimelineCanvas), announce: false);
+            e.Handled = true;
+        }
+
+        private void TimelineCanvas_PointerReleased(object? sender, PointerReleasedEventArgs e)
+        {
+            if (!_isTimelinePointerScrubbing)
+                return;
+
+            UpdateTimelineFromPointerPosition(e.GetPosition(TimelineCanvas), announce: true);
+            _isTimelinePointerScrubbing = false;
+            e.Pointer.Capture(null);
+            DebugLogger.Instance.Log("[ACTION] Timeline pointer scrubbing finished");
+            e.Handled = true;
+        }
+
+        private void TimelineCanvas_PointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+        {
+            _isTimelinePointerScrubbing = false;
         }
 
         private void TriggerCapture()
@@ -461,6 +548,7 @@ namespace OpenStopMotionStudio.GUI
             UpdateFrameCounterText();
 
             RefreshOnionSkinPreview();
+            RefreshReferenceOverlayPreview();
             UpdateShotPreview();
             RefreshTimelineState();
             EnsureTimelineCursorVisible();
@@ -481,6 +569,7 @@ namespace OpenStopMotionStudio.GUI
 
                     UpdateFrameCounterText();
                     RefreshOnionSkinPreview();
+                    RefreshReferenceOverlayPreview();
                     UpdateShotPreview();
                     RefreshTimelineState();
                     EnsureTimelineCursorVisible();
@@ -512,6 +601,7 @@ namespace OpenStopMotionStudio.GUI
 
             UpdateFrameCounterText();
             RefreshOnionSkinPreview();
+            RefreshReferenceOverlayPreview();
             UpdateShotPreview();
             RefreshTimelineState();
             EnsureTimelineCursorVisible();
@@ -551,6 +641,24 @@ namespace OpenStopMotionStudio.GUI
             RefreshOnionSkinPreview();
         }
 
+        private void OnionColorCodedToggle_IsCheckedChanged(object? sender, RoutedEventArgs e)
+        {
+            _overlay.ColorCodedMode = OnionColorCodedToggle.IsChecked == true;
+            RefreshOnionSkinPreview();
+            SetStatus(_overlay.ColorCodedMode
+                ? "Onion Skin Farbcodierung: AN"
+                : "Onion Skin Farbcodierung: AUS");
+        }
+
+        private void LoopPlaybackToggle_IsCheckedChanged(object? sender, RoutedEventArgs e)
+        {
+            _overlay.ShowLoopPlaybackOverlay = LoopPlaybackToggle.IsChecked == true;
+            RefreshLoopPlaybackOverlay();
+            SetStatus(_overlay.ShowLoopPlaybackOverlay
+                ? "Loop-Vergleich: AN"
+                : "Loop-Vergleich: AUS");
+        }
+
         private void AlphaSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         {
             if (!_uiReady)
@@ -558,8 +666,30 @@ namespace OpenStopMotionStudio.GUI
 
             double alpha = e.NewValue / 100.0;
             _overlay.AlphaValue = alpha;
-            AlphaLabel.Text = $"Transparenz: {(int)e.NewValue}%";
+            AlphaLabel.Text = $"Onion-Transparenz: {(int)e.NewValue}%";
             RefreshOnionSkinPreview();
+        }
+
+        private void ReferenceAlphaSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        {
+            if (!_uiReady)
+                return;
+
+            double alpha = e.NewValue / 100.0;
+            _overlay.ReferenceAlphaValue = alpha;
+            ReferenceAlphaLabel.Text = $"Referenz-Transparenz: {(int)e.NewValue}%";
+            RefreshReferenceOverlayPreview();
+        }
+
+        private void LoopOverlayAlphaSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        {
+            if (!_uiReady)
+                return;
+
+            double alpha = e.NewValue / 100.0;
+            _overlay.LoopPlaybackAlphaValue = alpha;
+            LoopOverlayAlphaLabel.Text = $"Loop-Overlay: {(int)e.NewValue}%";
+            RefreshLoopPlaybackOverlay();
         }
 
         private void AlphaPreset_Click(object sender, RoutedEventArgs e)
@@ -608,15 +738,24 @@ namespace OpenStopMotionStudio.GUI
             if (!_overlay.IsEnabled)
             {
                 ClearOnionSkinLayers();
+                ClearTintedOnionCache();
+                RefreshLoopPlaybackOverlay();
                 return;
             }
 
-            var recentFrames = _capture.GetRecentFrames(Math.Min(_overlay.OnionLayers, _onionSkinLayers.Length));
+            var recentFrames = GetOnionFramesForCurrentCursor(Math.Min(_overlay.OnionLayers, _onionSkinLayers.Length));
+            HashSet<string> usedTintedKeys = new();
             for (int i = 0; i < _onionSkinLayers.Length; i++)
             {
                 if (i < recentFrames.Count)
                 {
-                    _onionSkinLayers[i].Source = recentFrames[i].PreviewFrame;
+                    Bitmap? source = recentFrames[i].PreviewFrame;
+                    if (_overlay.ColorCodedMode)
+                    {
+                        source = GetOrCreateTintedOnionFrame(recentFrames[i], i + 1, usedTintedKeys);
+                    }
+
+                    _onionSkinLayers[i].Source = source;
                     _onionSkinLayers[i].Opacity = _overlay.GetAlphaForLayer(i + 1);
                     _onionSkinLayers[i].IsVisible = true;
                 }
@@ -626,6 +765,84 @@ namespace OpenStopMotionStudio.GUI
                     _onionSkinLayers[i].IsVisible = false;
                 }
             }
+
+            if (_overlay.ColorCodedMode)
+                PruneTintedOnionCache(usedTintedKeys);
+            else
+                ClearTintedOnionCache();
+
+            RefreshLoopPlaybackOverlay();
+        }
+
+        private void RefreshLoopPlaybackOverlay()
+        {
+            if (!_overlay.ShowLoopPlaybackOverlay || _capture.Frames.Count < 2)
+            {
+                LoopPlaybackOverlayImage.Source = null;
+                LoopPlaybackOverlayImage.IsVisible = false;
+                return;
+            }
+
+            CapturedFrame first = _capture.Frames[0];
+            CapturedFrame last = _capture.Frames[^1];
+            int currentFrame = Math.Max(1, _timelineCursorFrame);
+            int frameCount = _capture.Frames.Count;
+
+            // Blend only near loop boundaries: beginning blends against end, end against beginning.
+            int blendWindow = Math.Clamp(Math.Min(8, frameCount / 2), 1, 8);
+
+            Bitmap? compareFrame = null;
+            double blendFactor = 0.0;
+
+            int fromStart = currentFrame - first.Index;
+            if (fromStart >= 0 && fromStart < blendWindow)
+            {
+                compareFrame = last.PreviewFrame;
+                blendFactor = 1.0 - (fromStart / (double)blendWindow);
+            }
+            else
+            {
+                int fromEnd = last.Index - currentFrame;
+                if (fromEnd >= 0 && fromEnd < blendWindow)
+                {
+                compareFrame = first.PreviewFrame;
+                    blendFactor = 1.0 - (fromEnd / (double)blendWindow);
+                }
+            }
+
+            if (compareFrame is null || blendFactor <= 0.0)
+            {
+                LoopPlaybackOverlayImage.Source = null;
+                LoopPlaybackOverlayImage.IsVisible = false;
+                return;
+            }
+
+            LoopPlaybackOverlayImage.Source = compareFrame;
+            LoopPlaybackOverlayImage.Opacity = _overlay.LoopPlaybackAlphaValue * blendFactor;
+            LoopPlaybackOverlayImage.IsVisible = true;
+        }
+
+        private IReadOnlyList<CapturedFrame> GetOnionFramesForCurrentCursor(int maxCount)
+        {
+            if (maxCount <= 0 || _capture.Frames.Count == 0)
+                return Array.Empty<CapturedFrame>();
+
+            int cursorFrame = Math.Max(1, _timelineCursorFrame);
+            bool includeCurrentFrame = _camera.IsRunning && _playbackIndex < 0;
+            List<CapturedFrame> result = new(maxCount);
+
+            for (int i = _capture.Frames.Count - 1; i >= 0 && result.Count < maxCount; i--)
+            {
+                CapturedFrame frame = _capture.Frames[i];
+                bool isUsable = includeCurrentFrame
+                    ? frame.Index <= cursorFrame
+                    : frame.Index < cursorFrame;
+
+                if (isUsable)
+                    result.Add(frame);
+            }
+
+            return result;
         }
 
         private void ClearOnionSkinLayers()
@@ -634,6 +851,277 @@ namespace OpenStopMotionStudio.GUI
             {
                 layer.Source = null;
                 layer.IsVisible = false;
+            }
+        }
+
+        private Bitmap? GetOrCreateTintedOnionFrame(CapturedFrame frame, int layerIndex, HashSet<string> usedKeys)
+        {
+            if (frame.PreviewFrame == null)
+                return null;
+
+            int tintIndex = Math.Clamp(layerIndex - 1, 0, OnionTintPalette.Length - 1);
+            Color tint = OnionTintPalette[tintIndex];
+            string key = $"{RuntimeHelpers.GetHashCode(frame.PreviewFrame)}:{layerIndex}";
+            usedKeys.Add(key);
+
+            if (_tintedOnionCache.TryGetValue(key, out Bitmap? cached))
+                return cached;
+
+            Bitmap tinted = CreateTintedBitmap(frame.PreviewFrame, tint);
+            _tintedOnionCache[key] = tinted;
+            return tinted;
+        }
+
+        private static unsafe Bitmap CreateTintedBitmap(Bitmap source, Color tint)
+        {
+            int width = source.PixelSize.Width;
+            int height = source.PixelSize.Height;
+            if (width <= 0 || height <= 0)
+                return source;
+
+            int stride = width * 4;
+            int bufferSize = stride * height;
+            byte[] sourceBuffer = new byte[bufferSize];
+
+            fixed (byte* srcPtr = sourceBuffer)
+            {
+                source.CopyPixels(new PixelRect(0, 0, width, height), (IntPtr)srcPtr, bufferSize, stride);
+            }
+
+            var tintedBitmap = new WriteableBitmap(new PixelSize(width, height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Unpremul);
+            using (var framebuffer = tintedBitmap.Lock())
+            {
+                byte* dest = (byte*)framebuffer.Address.ToPointer();
+                int rowBytes = framebuffer.RowBytes;
+
+                Parallel.For(0, height, y =>
+                {
+                    int srcRow = y * stride;
+                    int dstRow = y * rowBytes;
+                    for (int x = 0; x < width; x++)
+                    {
+                        int srcOffset = srcRow + x * 4;
+                        int dstOffset = dstRow + x * 4;
+
+                        byte b = sourceBuffer[srcOffset];
+                        byte g = sourceBuffer[srcOffset + 1];
+                        byte r = sourceBuffer[srcOffset + 2];
+                        byte a = sourceBuffer[srcOffset + 3];
+
+                        double luminance = ((0.299 * r) + (0.587 * g) + (0.114 * b)) / 255.0;
+
+                        dest[dstOffset] = (byte)Math.Clamp(tint.B * luminance, 0, 255);
+                        dest[dstOffset + 1] = (byte)Math.Clamp(tint.G * luminance, 0, 255);
+                        dest[dstOffset + 2] = (byte)Math.Clamp(tint.R * luminance, 0, 255);
+                        dest[dstOffset + 3] = a;
+                    }
+                });
+            }
+
+            return tintedBitmap;
+        }
+
+        private void PruneTintedOnionCache(HashSet<string> usedKeys)
+        {
+            List<string> keysToRemove = new();
+            foreach (string key in _tintedOnionCache.Keys)
+            {
+                if (!usedKeys.Contains(key))
+                    keysToRemove.Add(key);
+            }
+
+            foreach (string key in keysToRemove)
+            {
+                if (_tintedOnionCache.Remove(key, out Bitmap? bitmap))
+                    bitmap.Dispose();
+            }
+        }
+
+        private void ClearTintedOnionCache()
+        {
+            foreach (Bitmap bitmap in _tintedOnionCache.Values)
+                bitmap.Dispose();
+
+            _tintedOnionCache.Clear();
+        }
+
+        private void RefreshReferenceOverlayPreview()
+        {
+            if (ReferenceOverlayToggle.IsChecked != true || !_referenceOverlay.HasSource)
+            {
+                ReferenceOverlayImage.Source = null;
+                ReferenceOverlayImage.IsVisible = false;
+                return;
+            }
+
+            try
+            {
+                int frameNumber = Math.Max(1, _timelineCursorFrame);
+                Bitmap? frame = _referenceOverlay.GetFrameForTimelineFrame(frameNumber);
+                if (frame == null)
+                {
+                    ReferenceOverlayImage.Source = null;
+                    ReferenceOverlayImage.IsVisible = false;
+                    return;
+                }
+
+                ReferenceOverlayImage.Source = frame;
+                ReferenceOverlayImage.Opacity = _overlay.ReferenceAlphaValue;
+                ReferenceOverlayImage.IsVisible = true;
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Instance.LogError("ReferenceOverlay", $"Refresh failed: {ex.Message}");
+                ReferenceOverlayImage.Source = null;
+                ReferenceOverlayImage.IsVisible = false;
+            }
+        }
+
+        private async void LoadReferenceOverlayFile_Click(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+                {
+                    Title = "Overlay Video/Bild wählen",
+                    AllowMultiple = false,
+                    FileTypeFilter = new[]
+                    {
+                        new FilePickerFileType("Overlay Medien")
+                        {
+                            Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif", "*.webp", "*.mp4", "*.mov", "*.avi", "*.mkv", "*.wmv", "*.m4v" }
+                        }
+                    }
+                });
+
+                if (files.Count == 0)
+                    return;
+
+                string filePath = files[0].Path.LocalPath;
+                string extension = Path.GetExtension(filePath).ToLowerInvariant();
+                bool isVideo = extension is ".mp4" or ".mov" or ".avi" or ".mkv" or ".wmv" or ".m4v";
+
+                if (isVideo)
+                    _referenceOverlay.LoadVideo(filePath);
+                else if (ReferenceOverlayProvider.IsSupportedImageFile(filePath))
+                    _referenceOverlay.LoadSingleImage(filePath);
+                else
+                    throw new InvalidOperationException("Dateityp für Overlay wird nicht unterstützt.");
+
+                ReferenceOverlayInfoText.Text = _referenceOverlay.SourceLabel;
+                ReferenceOverlayToggle.IsChecked = true;
+                RefreshReferenceOverlayPreview();
+                SetStatus($"Referenz geladen: {_referenceOverlay.SourceLabel}");
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Instance.LogError("ReferenceOverlay", $"Load file failed: {ex.Message}");
+                await MessageBox.Show(this, "Referenz-Overlay", $"Overlay konnte nicht geladen werden:\n{ex.Message}");
+            }
+        }
+
+        private async void LoadReferenceImageSequence_Click(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string? folder = await BrowseForFolder("Overlay-Bildsequenz wählen");
+                if (string.IsNullOrWhiteSpace(folder))
+                    return;
+
+                _referenceOverlay.LoadImageSequence(folder);
+                ReferenceOverlayInfoText.Text = _referenceOverlay.SourceLabel;
+                ReferenceOverlayToggle.IsChecked = true;
+                RefreshReferenceOverlayPreview();
+                SetStatus($"Referenz geladen: {_referenceOverlay.SourceLabel}");
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Instance.LogError("ReferenceOverlay", $"Load sequence failed: {ex.Message}");
+                await MessageBox.Show(this, "Referenz-Overlay", $"Bildsequenz konnte nicht geladen werden:\n{ex.Message}");
+            }
+        }
+
+        private void ClearReferenceOverlay_Click(object? sender, RoutedEventArgs e)
+        {
+            _referenceOverlay.Clear();
+            ReferenceOverlayInfoText.Text = _referenceOverlay.SourceLabel;
+            ReferenceOverlayToggle.IsChecked = false;
+            ReferenceOverlayImage.Source = null;
+            ReferenceOverlayImage.IsVisible = false;
+            SetStatus("Referenz-Overlay entfernt.");
+        }
+
+        private void ReferencePlaybackModeButton_Click(object? sender, RoutedEventArgs e)
+        {
+            _referenceOverlay.PlaybackMode = _referenceOverlay.PlaybackMode == ReferenceOverlayPlaybackMode.Loop
+                ? ReferenceOverlayPlaybackMode.HoldLastFrame
+                : ReferenceOverlayPlaybackMode.Loop;
+
+            UpdateReferencePlaybackModeButton();
+            RefreshReferenceOverlayPreview();
+
+            SetStatus(_referenceOverlay.PlaybackMode == ReferenceOverlayPlaybackMode.Loop
+                ? "Referenz-Modus: Loop aktiv."
+                : "Referenz-Modus: Stoppt am letzten Frame.");
+        }
+
+        private void UpdateReferencePlaybackModeButton()
+        {
+            _referenceLoopIcon ??= LoadReferencePlaybackIcon("reference_mode_loop");
+            _referenceHoldIcon ??= LoadReferencePlaybackIcon("reference_mode_hold");
+
+            bool isLoop = _referenceOverlay.PlaybackMode == ReferenceOverlayPlaybackMode.Loop;
+            ReferencePlaybackModeText.Text = isLoop ? "Modus: Loop" : "Modus: Bis Ende";
+            ReferencePlaybackModeIcon.Source = isLoop ? _referenceLoopIcon : _referenceHoldIcon;
+        }
+
+        private void UpdateTabIcons()
+        {
+            _tabCaptureIcon ??= LoadReferencePlaybackIcon("tab_capture");
+            _tabOnionOverlayIcon ??= LoadReferencePlaybackIcon("tab_onion_overlay");
+            _tabProjectRawIcon ??= LoadReferencePlaybackIcon("tab_project_raw");
+            _tabHardwareIcon ??= LoadReferencePlaybackIcon("tab_hardware");
+
+            TabIconCapture.Source = _tabCaptureIcon;
+            TabIconOnionOverlay.Source = _tabOnionOverlayIcon;
+            TabIconProjectRaw.Source = _tabProjectRawIcon;
+            TabIconHardware.Source = _tabHardwareIcon;
+        }
+
+        private Bitmap? LoadReferencePlaybackIcon(string baseFileName)
+        {
+            string preferredSize = RenderScaling >= 1.5 ? "48" : "24";
+            string fallbackSize = preferredSize == "48" ? "24" : "48";
+
+            Bitmap? preferred = TryLoadReferencePlaybackIcon(baseFileName, preferredSize);
+            return preferred ?? TryLoadReferencePlaybackIcon(baseFileName, fallbackSize);
+        }
+
+        private Bitmap? TryLoadReferencePlaybackIcon(string baseFileName, string size)
+        {
+            try
+            {
+                var uri = new Uri($"avares://OpenStopMotionStudio/Assets/icons/reference-overlay/{baseFileName}_{size}.png");
+                using Stream stream = AssetLoader.Open(uri);
+                return new Bitmap(stream);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private void ReferenceOverlayToggle_IsCheckedChanged(object? sender, RoutedEventArgs e)
+        {
+            bool isEnabled = ReferenceOverlayToggle.IsChecked == true;
+            ReferenceOverlayToggle.Content = isEnabled ? "Referenz-Overlay: AN ✓" : "Referenz-Overlay: AUS";
+
+            if (isEnabled)
+                RefreshReferenceOverlayPreview();
+            else
+            {
+                ReferenceOverlayImage.Source = null;
+                ReferenceOverlayImage.IsVisible = false;
             }
         }
 
@@ -711,6 +1199,7 @@ namespace OpenStopMotionStudio.GUI
             ShowPlaybackFrame(frame);
             RefreshTimelineState();
             EnsureTimelineCursorVisible();
+            RefreshReferenceOverlayPreview();
         }
 
         private void ShowPlaybackFrame(CapturedFrame frame)
@@ -780,6 +1269,11 @@ namespace OpenStopMotionStudio.GUI
             }
         }
 
+        private void CancelNefImportButton_Click(object? sender, RoutedEventArgs e)
+        {
+            CancelNefImportRequested();
+        }
+
         private void CaptureFormatComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (!_uiReady || CaptureFormatComboBox.SelectedIndex < 0)
@@ -822,6 +1316,7 @@ namespace OpenStopMotionStudio.GUI
             UpdateFrameCounterText();
 
             RefreshOnionSkinPreview();
+            RefreshReferenceOverlayPreview();
             UpdateShotPreview();
             RefreshTimelineState();
             SetStatus($"Shot aktiv: {shotName}");
@@ -838,10 +1333,72 @@ namespace OpenStopMotionStudio.GUI
             StatusBarText.Text = message;
         }
 
+        private CameraDeviceDescriptor? GetSelectedCameraDescriptor()
+        {
+            int selectedIndex = CameraComboBox.SelectedIndex;
+            return selectedIndex >= 0 && selectedIndex < _cameraDevices.Count
+                ? _cameraDevices[selectedIndex]
+                : null;
+        }
+
+        private static bool IsSdkBackedCamera(CameraDeviceDescriptor? descriptor)
+        {
+            return descriptor is not null && descriptor.ConnectionKind != CameraConnectionKind.GenericVideo;
+        }
+
+        private static string DescribeConnectionKind(CameraConnectionKind kind)
+        {
+            return kind switch
+            {
+                CameraConnectionKind.CanonEdsdk => "Canon EDSDK",
+                CameraConnectionKind.NikonMaid => "Nikon MAID",
+                CameraConnectionKind.SonyCr => "Sony CrSDK",
+                _ => "Generisches Video-Backend"
+            };
+        }
+
+        private void UpdateCameraIntegrationStatus(string? statusOverride = null)
+        {
+            CameraDeviceDescriptor? descriptor = GetSelectedCameraDescriptor();
+            CameraConnectionKind backendKind = _camera.CurrentConnectionKind ?? descriptor?.ConnectionKind ?? CameraConnectionKind.GenericVideo;
+
+            if (descriptor is null)
+            {
+                CameraBackendStatusText.Text = "Backend: keine Kamera ausgewählt";
+                CameraCaptureModeText.Text = "Capture-Modus: nicht aktiv";
+                CameraSdkStatusText.Text = "SDK-Status: keine Kamera ausgewählt";
+                return;
+            }
+
+            CameraBackendStatusText.Text = $"Backend: {DescribeConnectionKind(backendKind)}";
+
+            if (_camera.IsRunning)
+            {
+                CameraCaptureModeText.Text = _camera.UsesHardwareStillCapture
+                    ? "Capture-Modus: DSLR-Still-Capture über Hersteller-SDK"
+                    : "Capture-Modus: Live-Frame-Capture über Video-Backend";
+            }
+            else
+            {
+                CameraCaptureModeText.Text = IsSdkBackedCamera(descriptor)
+                    ? "Capture-Modus: SDK-Kamera ausgewählt, Verbindung noch nicht gestartet"
+                    : "Capture-Modus: generische Videoquelle ausgewählt";
+            }
+
+            string baseStatus = IsSdkBackedCamera(descriptor)
+                ? $"SDK-Status: {descriptor.AdapterName} für {descriptor.Name} erkannt"
+                : $"SDK-Status: {descriptor.Name} nutzt kein Hersteller-SDK";
+
+            CameraSdkStatusText.Text = string.IsNullOrWhiteSpace(statusOverride)
+                ? baseStatus
+                : $"{baseStatus}\nLetzter Status: {statusOverride}";
+        }
+
         private void OnCameraStatusChanged(string message)
         {
             Dispatcher.UIThread.Post(() =>
             {
+                UpdateCameraIntegrationStatus(message);
                 SetStatus(message);
                 DebugLogger.Instance.LogInfo("Camera", message);
             });
@@ -878,6 +1435,14 @@ namespace OpenStopMotionStudio.GUI
             _camera.StatusChanged -= OnCameraStatusChanged;
             _camera.Stop();
             _camera.Dispose();
+            _referenceOverlay.Dispose();
+            ClearTintedOnionCache();
+            _referenceLoopIcon?.Dispose();
+            _referenceHoldIcon?.Dispose();
+            _tabCaptureIcon?.Dispose();
+            _tabOnionOverlayIcon?.Dispose();
+            _tabProjectRawIcon?.Dispose();
+            _tabHardwareIcon?.Dispose();
             _streamDeck.Disconnect();
             base.OnClosed(e);
         }
@@ -912,6 +1477,7 @@ namespace OpenStopMotionStudio.GUI
                         UpdateFrameCounterText();
                         UpdateShotPreview();
                         RefreshOnionSkinPreview();
+                        RefreshReferenceOverlayPreview();
                         RefreshTimelineState();
                         EnsureTimelineCursorVisible();
                         ShowFrameAtPlaybackIndex(loadSummary.LoadedFrameCount - 1);

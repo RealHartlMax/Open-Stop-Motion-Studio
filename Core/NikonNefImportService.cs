@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 
 namespace OpenStopMotionStudio.Core
 {
@@ -27,7 +28,8 @@ namespace OpenStopMotionStudio.Core
         public NefImportSummary ImportFolder(
             string sourceFolder,
             NefImportSettings settings,
-            IProgress<NefImportProgress>? progress = null)
+            IProgress<NefImportProgress>? progress = null,
+            CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(sourceFolder) || !Directory.Exists(sourceFolder))
                 throw new DirectoryNotFoundException("Der gewählte RAW-Ordner wurde nicht gefunden.");
@@ -57,23 +59,69 @@ namespace OpenStopMotionStudio.Core
             Directory.CreateDirectory(proxyFolder);
 
             List<CapturedFrame> importedFrames = new(sourceFiles.Count);
+            List<NefImportFailure> failedFiles = new();
+            int nextFrameNumber = frameStart;
+            bool wasCanceled = false;
 
             using var sdk = new NikonImageSdkRuntime(sdkLocation);
             for (int i = 0; i < sourceFiles.Count; i++)
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    wasCanceled = true;
+                    break;
+                }
+
                 string sourcePath = sourceFiles[i];
-                int frameNumber = frameStart + i;
 
                 progress?.Report(new NefImportProgress(i + 1, sourceFiles.Count, Path.GetFileName(sourcePath)));
 
+                int frameNumber = nextFrameNumber;
                 string masterPath = ProjectPaths.BuildOriginalPath(settings.ProjectFolder, shotName, frameNumber, ".png");
                 string proxyPath = ProjectPaths.BuildProxyPath(settings.ProjectFolder, shotName, frameNumber);
 
-                ImportedFrameData imported = sdk.ImportFile(sourcePath, masterPath, proxyPath, settings);
-                importedFrames.Add(new CapturedFrame(frameNumber, shotName, imported.MasterPath, imported.ProxyPath, imported.PreviewFrame));
+                try
+                {
+                    ImportedFrameData imported = sdk.ImportFile(sourcePath, masterPath, proxyPath, settings);
+                    importedFrames.Add(new CapturedFrame(frameNumber, shotName, imported.MasterPath, imported.ProxyPath, imported.PreviewFrame));
+                    nextFrameNumber++;
+                }
+                catch (Exception ex)
+                {
+                    SafeDelete(masterPath);
+                    SafeDelete(proxyPath);
+                    failedFiles.Add(new NefImportFailure(sourcePath, Path.GetFileName(sourcePath), ex.Message));
+                    DebugLogger.Instance.LogError("RawImport", $"Skipped RAW file {Path.GetFileName(sourcePath)}: {ex.Message}");
+                }
             }
 
-            return new NefImportSummary(shotName, frameStart, masterFolder, proxyFolder, importedFrames);
+            if (importedFrames.Count == 0)
+            {
+                if (wasCanceled)
+                {
+                    return new NefImportSummary(shotName, frameStart, masterFolder, proxyFolder, importedFrames, failedFiles, true);
+                }
+
+                string reason = failedFiles.Count > 0
+                    ? $"Alle RAW-Dateien konnten nicht importiert werden. Erste Fehlermeldung: {failedFiles[0].Error}"
+                    : "Es konnten keine RAW-Dateien importiert werden.";
+                throw new InvalidOperationException(reason);
+            }
+
+            return new NefImportSummary(shotName, frameStart, masterFolder, proxyFolder, importedFrames, failedFiles, wasCanceled);
+        }
+
+        private static void SafeDelete(string path)
+        {
+            try
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+            catch
+            {
+                // Best effort cleanup only.
+            }
         }
 
         private static bool IsSupportedRawFile(string path)

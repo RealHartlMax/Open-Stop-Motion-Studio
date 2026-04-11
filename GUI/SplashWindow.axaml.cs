@@ -35,6 +35,20 @@ namespace OpenStopMotionStudio.GUI
 
             if (success)
             {
+                try
+                {
+                    var updateService = new UpdateService();
+                    UpdateCheckResult? update = await updateService.CheckForUpdatesAsync();
+                    if (update is not null)
+                    {
+                        await UpdateAvailableWindow.ShowIfAvailableAsync(this, update);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DebugLogger.Instance.LogInfo("UpdateCheck", $"Update dialog failed: {ex.Message}");
+                }
+
                 var projectWindow = new ProjectWindow(_desktop);
                 _desktop.MainWindow = projectWindow;
                 projectWindow.Show();

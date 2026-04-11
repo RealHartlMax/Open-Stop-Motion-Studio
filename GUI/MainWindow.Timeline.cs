@@ -16,6 +16,7 @@ namespace OpenStopMotionStudio.GUI
     {
         private const int DefaultPlaybackFps = 12;
         private const int MaxPlaybackFps = 120;
+        private const int FastScrubStep = 5;
         private const int MinTimelineFrames = 250;
         private const double TimelinePixelsPerFrame = 12.0;
         private const double TimelinePadding = 12.0;
@@ -26,6 +27,7 @@ namespace OpenStopMotionStudio.GUI
         private int _playbackFps = DefaultPlaybackFps;
         private bool _suppressTimelineFrameScrollBar;
         private int _timelineCursorFrame = 1;
+        private bool _isTimelinePointerScrubbing;
 
         private void PlaybackFpsTextBox_KeyDown(object sender, KeyEventArgs e)
         {
@@ -72,22 +74,30 @@ namespace OpenStopMotionStudio.GUI
             if (!_uiReady)
                 return;
 
+            if (e.Handled)
+            {
+                DebugLogger.Instance.LogInfo("MouseWheel", "Ignored already-handled wheel event (possible duplicate bubble). ");
+                return;
+            }
+
             int oldFrame = _timelineCursorFrame;
             DebugLogger.Instance.LogMouseWheel(e.Delta.Y);
+            bool fastScrub = (e.KeyModifiers & KeyModifiers.Shift) == KeyModifiers.Shift;
+            int scrubStep = fastScrub ? FastScrubStep : 1;
             
             StopPlaybackInternal();
             
-            // Mouse wheel up = next frame, down = previous frame
-            // Works even without captured frames for motion control preview
+            // Mouse wheel up = next frame, down = previous frame.
+            // Hold Shift for accelerated scrubbing.
             if (e.Delta.Y > 0)
             {
-                int nextFrame = Math.Min(_timelineCursorFrame + 1, GetTimelineEndFrame());
+                int nextFrame = Math.Min(_timelineCursorFrame + scrubStep, GetTimelineEndFrame());
                 DebugLogger.Instance.LogFrameNavigation(oldFrame, nextFrame, "Mouse Wheel Up");
                 MoveTimelineCursorToFrame(nextFrame, false);
             }
             else if (e.Delta.Y < 0)
             {
-                int nextFrame = Math.Max(_timelineCursorFrame - 1, 1);
+                int nextFrame = Math.Max(_timelineCursorFrame - scrubStep, 1);
                 DebugLogger.Instance.LogFrameNavigation(oldFrame, nextFrame, "Mouse Wheel Down");
                 MoveTimelineCursorToFrame(nextFrame, false);
             }
@@ -137,6 +147,8 @@ namespace OpenStopMotionStudio.GUI
 
             RefreshTimelineState();
             EnsureTimelineCursorVisible();
+            RefreshOnionSkinPreview();
+            RefreshReferenceOverlayPreview();
 
             if (announce)
             {
@@ -430,6 +442,19 @@ namespace OpenStopMotionStudio.GUI
             {
                 TimelineScrollViewer.Offset = new Vector(Math.Max(0, x - TimelineScrollViewer.Viewport.Width + margin), TimelineScrollViewer.Offset.Y);
             }
+        }
+
+        private int GetTimelineFrameForCanvasX(double canvasX)
+        {
+            double framePosition = ((canvasX - TimelinePadding) / TimelinePixelsPerFrame) + 1;
+            int frameNumber = (int)Math.Round(framePosition, MidpointRounding.AwayFromZero);
+            return Math.Clamp(frameNumber, 1, GetTimelineEndFrame());
+        }
+
+        private void UpdateTimelineFromPointerPosition(Point position, bool announce)
+        {
+            StopPlaybackInternal();
+            MoveTimelineCursorToFrame(GetTimelineFrameForCanvasX(position.X), announce);
         }
     }
 }

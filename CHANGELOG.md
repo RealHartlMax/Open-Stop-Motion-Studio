@@ -4,6 +4,47 @@ All notable changes to this project are documented here.
 Alle wichtigen Aenderungen an diesem Projekt werden hier dokumentiert.
 
 ---
+## Unreleased
+
+### English
+
+#### Added
+- **Reference Overlay Workflow**: Added reference overlays for single images, image sequences, and video files, including loop/hold playback behavior and separate transparency control.
+- **Loop Review Overlay**: Added a start/end loop comparison overlay with edge crossfade support for checking seamless animation loops.
+- **Sony CrSDK Path**: Added Sony CrSDK camera enumeration, connection, live view, and in-app capture file delivery for Windows-based Sony SDK setups.
+- **In-App Updater**: Added `versions.json` based update checks and a startup popup with a direct update/download action when a newer version is available.
+
+#### Changed
+- **Timeline Interaction**: The dope sheet now supports direct click-and-drag playhead scrubbing in addition to wheel and keyboard navigation.
+- **Camera Integration UI**: The hardware view now shows the active backend, SDK/capture mode, and SDK-aware resolution behavior for DSLR-backed cameras.
+- **RAW Import UX**: Nikon RAW import now provides modal progress, cancellation, completion states, and continued processing after per-file failures.
+- **Update Manifest Metadata**: `versions.json` now includes historical release changelog entries and uses a GitHub-hosted raw manifest URL for live update checks.
+
+#### Fixed
+- **Timeline Scrubbing**: Fixed duplicate wheel-event handling that could skip every second frame during timeline navigation.
+- **Onion Performance**: Improved onion-skin rendering with multithreaded tint generation and separate alpha controls for onion, reference, and loop overlays.
+- **Sony Reliability**: Hardened Sony CrSDK handling with safer ID parsing fallback, retry logic for busy shutter commands, and more robust capture-file timeout resolution.
+
+### Deutsch
+
+#### Hinzugefuegt
+- **Referenz-Overlay-Workflow**: Referenz-Overlays fuer Einzelbilder, Bildsequenzen und Videodateien hinzugefuegt, inklusive Loop-/Hold-Wiedergabeverhalten und getrennter Transparenzsteuerung.
+- **Loop-Vergleichs-Overlay**: Ein Overlay zum Vergleich von Start und Ende mit Rand-Crossfade hinzugefuegt, um nahtlose Animations-Loops zu pruefen.
+- **Sony-CrSDK-Pfad**: Sony-CrSDK-Kameraerkennung, Verbindung, Live-View und die Dateiübergabe von Captures in die App fuer Windows-basierte Sony-SDK-Setups hinzugefuegt.
+- **In-App-Updater**: Update-Pruefung auf Basis von `versions.json` und ein Startup-Popup mit direkter Update-/Download-Aktion bei einer neueren Version hinzugefuegt.
+
+#### Geaendert
+- **Timeline-Interaktion**: Das Dope Sheet unterstuetzt jetzt direktes Klick-und-Drag-Scrubbing des Playheads zusaetzlich zu Mausrad- und Tastatur-Navigation.
+- **Kamera-Integrations-UI**: Die Hardware-Ansicht zeigt jetzt aktives Backend, SDK-/Capture-Modus und SDK-bewusstes Aufloesungsverhalten fuer DSLR-Kameras an.
+- **RAW-Import-UX**: Der Nikon-RAW-Import bietet jetzt modalen Fortschritt, Abbruch, Abschlusszustaende und fortgesetzte Verarbeitung trotz Einzeldatei-Fehlern.
+- **Update-Manifest-Metadaten**: `versions.json` enthaelt jetzt historische Release-ChangeLogs und verwendet eine gehostete GitHub-Raw-Manifest-URL fuer Live-Update-Pruefungen.
+
+#### Behoben
+- **Timeline-Scrubbing**: Doppelte Mausrad-Ereignisse behoben, die beim Navigieren durch die Timeline jedes zweite Frame ueberspringen konnten.
+- **Onion-Performance**: Onion-Skin-Rendering durch multithreaded Tint-Erzeugung und getrennte Alpha-Regler fuer Onion-, Referenz- und Loop-Overlays verbessert.
+- **Sony-Zuverlaessigkeit**: Sony-CrSDK-Behandlung gehaertet durch robustere ID-Parsing-Fallbacks, Retry-Logik bei Device-Busy-Ausloeserkommandos und stabilere Capture-Datei-Zuordnung bei Timeouts.
+
+---
 ## v0.1.1 - 2026-04-06
 
 ### English
