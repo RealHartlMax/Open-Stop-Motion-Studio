@@ -52,7 +52,8 @@ namespace OpenStopMotionStudio.Core
 
                     using (capture)
                     {
-                        if (!TryReadTestFrame(capture))
+                        bool frameReady = TryReadTestFrame(capture);
+                        if (!frameReady && IsLikelyNonCaptureEndpoint(cameraName, deviceName))
                             continue;
                     }
 
@@ -63,6 +64,18 @@ namespace OpenStopMotionStudio.Core
             }
 
             return deviceDescriptors;
+        }
+
+        private static bool IsLikelyNonCaptureEndpoint(string cameraName, string deviceName)
+        {
+            string probe = $"{cameraName} {deviceName}";
+
+            return probe.Contains("metadata", System.StringComparison.OrdinalIgnoreCase)
+                || probe.Contains("codec", System.StringComparison.OrdinalIgnoreCase)
+                || probe.Contains("m2m", System.StringComparison.OrdinalIgnoreCase)
+                || probe.Contains("vbi", System.StringComparison.OrdinalIgnoreCase)
+                || probe.Contains("radio", System.StringComparison.OrdinalIgnoreCase)
+                || probe.Contains("loopback", System.StringComparison.OrdinalIgnoreCase);
         }
 
         private static int ParseVideoIndex(string? deviceName)

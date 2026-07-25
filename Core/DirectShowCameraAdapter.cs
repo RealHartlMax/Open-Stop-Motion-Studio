@@ -29,7 +29,7 @@ namespace OpenStopMotionStudio.Core
                 ? new[] { VideoCapture.API.Msmf, VideoCapture.API.Any }
                 : new[] { VideoCapture.API.Any };
 
-            int maxAttemptsPerBackend = OperatingSystem.IsWindows() ? 2 : 1;
+            int maxAttemptsPerBackend = 2;
             var failures = new List<string>();
 
             foreach (var backend in backends)

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Emgu.CV;
 
 namespace OpenStopMotionStudio.Core
@@ -125,10 +126,17 @@ namespace OpenStopMotionStudio.Core
         internal static bool TryReadTestFrame(VideoCapture capture)
         {
             using var frame = new Mat();
-            if (!capture.Read(frame))
-                return false;
 
-            return !frame.IsEmpty;
+            // Some devices need a few read attempts before delivering the first frame.
+            for (int attempt = 0; attempt < 5; attempt++)
+            {
+                if (capture.Read(frame) && !frame.IsEmpty)
+                    return true;
+
+                Thread.Sleep(60);
+            }
+
+            return false;
         }
     }
 }
