@@ -295,6 +295,7 @@ jobs:
           fi
 
           MESSAGE="${RELEASE_TITLE}\\nTag: ${TAG_NAME}\\nType: ${RELEASE_KIND}"
+          export MESSAGE
           PAYLOAD=$(python3 -c 'import json, os; print(json.dumps({"content": os.environ["MESSAGE"]}))')
           curl -sS -X POST "$WEBHOOK_URL" -H "Content-Type: application/json" -d "$PAYLOAD" >/dev/null
 
@@ -315,5 +316,6 @@ jobs:
 
           RELEASE_URL="https://github.com/${REPOSITORY}/releases/tag/${TAG_NAME}"
           MESSAGE="${RELEASE_TITLE}\\n${RELEASE_URL}"
+          export MESSAGE
           PAYLOAD=$(python3 -c 'import json, os; print(json.dumps({"content": os.environ["MESSAGE"]}))')
           curl -sS -X POST "$WEBHOOK_URL" -H "Content-Type: application/json" -d "$PAYLOAD" >/dev/null
