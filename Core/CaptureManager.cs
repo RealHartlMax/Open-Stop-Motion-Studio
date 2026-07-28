@@ -45,7 +45,7 @@ namespace OpenStopMotionStudio.Core
             EnsureParentDirectoryExists(masterPath);
             EnsureParentDirectoryExists(proxyPath);
             
-            var clonedFrame = CloneBitmap(frame);
+            Bitmap clonedFrame = CloneBitmap(frame)!;
 
             clonedFrame.Save(masterPath);
             SaveJpeg(clonedFrame, proxyPath, 85);
@@ -78,7 +78,10 @@ namespace OpenStopMotionStudio.Core
             var previewFrame = CreatePreviewBitmap(masterPath, previewFallback);
 
             EnsureParentDirectoryExists(proxyPath);
-            SaveJpeg(previewFrame, proxyPath, 85);
+            if (previewFrame is not null)
+            {
+                SaveJpeg(previewFrame, proxyPath, 85);
+            }
 
             return RegisterCapturedFrame(frameNumber, ShotName, masterPath, proxyPath, previewFrame);
         }
@@ -132,7 +135,7 @@ namespace OpenStopMotionStudio.Core
             foreach (ProjectFrameEntry entry in selectedEntries)
             {
                 string proxyPath = ResolveProxyPath(selectedShot, entry.FrameNumber, entry.MasterPath);
-                Bitmap previewFrame = LoadPreviewBitmap(entry.MasterPath, proxyPath);
+                Bitmap? previewFrame = LoadPreviewBitmap(entry.MasterPath, proxyPath);
                 loadedFrames.Add(new CapturedFrame(entry.FrameNumber, selectedShot, entry.MasterPath, proxyPath, previewFrame));
             }
 
@@ -220,8 +223,11 @@ namespace OpenStopMotionStudio.Core
             return "Originals in \\<Shot>\\original_capture_*, Proxies in \\<Shot>\\proxy";
         }
 
-        private static Bitmap CloneBitmap(Bitmap original)
+        private static Bitmap? CloneBitmap(Bitmap? original)
         {
+            if (original is null)
+                return null;
+
             using (var memoryStream = new MemoryStream())
             {
                 original.Save(memoryStream);
@@ -249,9 +255,9 @@ namespace OpenStopMotionStudio.Core
                 File.Delete(path);
         }
 
-        private CapturedFrame RegisterCapturedFrame(int frameNumber, string shotName, string masterPath, string proxyPath, Bitmap previewFrame)
+        private CapturedFrame RegisterCapturedFrame(int frameNumber, string shotName, string masterPath, string proxyPath, Bitmap? previewFrame)
         {
-            Bitmap storedPreview = CloneBitmap(previewFrame);
+            Bitmap? storedPreview = CloneBitmap(previewFrame);
             FrameCount++;
             LastFrame = storedPreview;
 
@@ -274,7 +280,7 @@ namespace OpenStopMotionStudio.Core
             return masterPath; // Fallback to master if proxy is not found
         }
 
-        private static Bitmap LoadPreviewBitmap(string masterPath, string proxyPath)
+        private static Bitmap? LoadPreviewBitmap(string masterPath, string proxyPath)
         {
             foreach (string candidate in new[] { proxyPath, masterPath })
             {
@@ -284,15 +290,16 @@ namespace OpenStopMotionStudio.Core
                 {
                     return new Bitmap(candidate);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // continue with next candidate
+                    System.Diagnostics.Debug.WriteLine($"[CaptureManager] Failed to load preview image '{candidate}': {ex.Message}");
                 }
             }
-            throw new InvalidOperationException($"Es konnte kein Vorschaubild für {Path.GetFileName(masterPath)} geladen werden.");
+
+            return null;
         }
 
-        private static Bitmap CreatePreviewBitmap(string masterPath, Bitmap? previewFallback)
+        private static Bitmap? CreatePreviewBitmap(string masterPath, Bitmap? previewFallback)
         {
             if (previewFallback is not null)
                 return CloneBitmap(previewFallback);
@@ -306,14 +313,16 @@ namespace OpenStopMotionStudio.Core
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException(
-                    $"Das aufgenommene Bild {Path.GetFileName(masterPath)} konnte nicht als Vorschau geladen werden.",
-                    ex);
+                System.Diagnostics.Debug.WriteLine($"[CaptureManager] Failed to create preview from '{masterPath}': {ex.Message}");
+                return null;
             }
         }
 
-        private static void SaveJpeg(Bitmap bitmap, string path, int quality)
+        private static void SaveJpeg(Bitmap? bitmap, string path, int quality)
         {
+            if (bitmap is null)
+                return;
+
             using var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write);
             bitmap.Save(fileStream, quality);
         }

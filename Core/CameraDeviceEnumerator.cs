@@ -138,5 +138,48 @@ namespace OpenStopMotionStudio.Core
 
             return false;
         }
+
+        public static List<CameraDeviceDescriptor> ParseGPhotoAutoDetectOutput(string output, int maxDevices = 16)
+        {
+            var descriptors = new List<CameraDeviceDescriptor>();
+            if (string.IsNullOrWhiteSpace(output))
+                return descriptors;
+
+            string[] lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (string line in lines)
+            {
+                string trimmed = line.Trim();
+                if (trimmed.Length == 0)
+                    continue;
+
+                if (trimmed.StartsWith("Model", StringComparison.OrdinalIgnoreCase)
+                    || trimmed.StartsWith("Port", StringComparison.OrdinalIgnoreCase)
+                    || trimmed.StartsWith("--", StringComparison.OrdinalIgnoreCase)
+                    || trimmed.Contains("Model") && trimmed.Contains("Port"))
+                    continue;
+
+                string[] parts = trimmed.Split(new[] { "  ", "\t" }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < 2)
+                    continue;
+
+                string cameraName = parts[0];
+                string port = parts[^1];
+                string vendor = GetVendorName(cameraName);
+                string adapterName = "gphoto2 Adapter";
+
+                descriptors.Add(new CameraDeviceDescriptor(
+                    descriptors.Count,
+                    cameraName,
+                    vendor,
+                    adapterName,
+                    CameraConnectionKind.GenericVideo,
+                    port));
+
+                if (descriptors.Count >= maxDevices)
+                    break;
+            }
+
+            return descriptors;
+        }
     }
 }

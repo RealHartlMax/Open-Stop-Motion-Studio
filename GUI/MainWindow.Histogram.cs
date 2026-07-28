@@ -32,7 +32,7 @@ namespace OpenStopMotionStudio.GUI
                 int[] histogram = CalculateHistogram(liveFrame);
                 if (histogram == null || histogram.Length == 0)
                 {
-                    ResetHistogramPreview("Kein Histogram");
+                    ResetHistogramPreview(_resourceManager.GetString("HistogramPlaceholder_NoHistogram") ?? "No histogram");
                     return;
                 }
                 
@@ -52,7 +52,7 @@ namespace OpenStopMotionStudio.GUI
             catch (Exception ex)
             {
                 DebugLogger.Instance.LogInfo("HistogramError", $"Error rendering histogram: {ex.Message}");
-                ResetHistogramPreview("Fehler beim Rendern");
+                ResetHistogramPreview(_resourceManager.GetString("HistogramPlaceholder_RenderError") ?? "Rendering error");
             }
         }
 
@@ -152,7 +152,7 @@ namespace OpenStopMotionStudio.GUI
 
                 if (HistogramStatsText != null)
                 {
-                    HistogramStatsText.Text = $"Schwarz {blackPercent:F1}% | Mittel {midPercent:F1}% | Weiß {whitePercent:F1}%";
+                    HistogramStatsText.Text = string.Format(_resourceManager.GetString("HistogramStats_Format") ?? "Black {0:F1}% | Mid {1:F1}% | White {2:F1}%", blackPercent, midPercent, whitePercent);
                 }
             }
             catch (Exception ex)
@@ -229,7 +229,7 @@ namespace OpenStopMotionStudio.GUI
             }
         }
 
-        private void ResetHistogramPreview(string placeholder = "Kein Live-Bild")
+        private void ResetHistogramPreview(string placeholder = "")
         {
             try
             {
@@ -238,12 +238,14 @@ namespace OpenStopMotionStudio.GUI
                     
                 if (HistogramEmptyText != null)
                 {
-                    HistogramEmptyText.Text = placeholder;
+                    HistogramEmptyText.Text = string.IsNullOrWhiteSpace(placeholder)
+                        ? _resourceManager.GetString("HistogramPlaceholder_NoLiveImage") ?? "No live image"
+                        : placeholder;
                     HistogramEmptyText.IsVisible = true;
                 }
                 
                 if (HistogramStatsText != null)
-                    HistogramStatsText.Text = "Schwarz 0.0% | Mittel 0.0% | Weiß 0.0%";
+                    HistogramStatsText.Text = _resourceManager.GetString("HistogramStats_Default") ?? "Black 0.0% | Mid 0.0% | White 0.0%";
                     
                 _lastHistogramRefreshUtc = DateTime.MinValue;
             }

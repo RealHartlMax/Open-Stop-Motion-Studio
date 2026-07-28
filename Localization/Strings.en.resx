@@ -1,30 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
-  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
-    <xsd:element name="root" msdata:IsDataSet="true">
-      <xsd:complexType>
-        <xsd:choice maxOccurs="unbounded">
-          <xsd:element name="data">
-            <xsd:complexType>
-              <xsd:sequence>
-                <xsd:element name="value" type="xsd:string" minOccurs="0" />
-              </xsd:sequence>
-              <xsd:attribute name="name" type="xsd:string" />
-              <xsd:attribute name="xml:space" type="xsd:string" />
-            </xsd:complexType>
-          </xsd:element>
-          <xsd:element name="resheader">
-            <xsd:complexType>
-              <xsd:sequence>
-                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
-              </xsd:sequence>
-              <xsd:attribute name="name" type="xsd:string" use="required" />
-            </xsd:complexType>
-          </xsd:element>
-        </xsd:choice>
-      </xsd:complexType>
-    </xsd:element>
-  </xsd:schema>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
   </resheader>
@@ -38,118 +13,112 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="NoCameraFound" xml:space="preserve">
-    <value>Keine Kamera gefunden</value>
+    <value>No camera found</value>
   </data>
   <data name="StartCameraButton_Content_Start" xml:space="preserve">
-    <value>▶ Kamera starten</value>
+    <value>▶ Start camera</value>
   </data>
   <data name="CameraChanged_Message" xml:space="preserve">
-    <value>Kamera geändert.\nZum Fortfahren erneut starten.</value>
+    <value>Camera changed.\nRestart to continue.</value>
   </data>
   <data name="CameraSwitched_Message" xml:space="preserve">
-    <value>Kamera gewechselt</value>
+    <value>Camera switched</value>
   </data>
   <data name="CameraSelectionChanged_Message" xml:space="preserve">
-    <value>Kameraauswahl geändert.</value>
+    <value>Camera selection changed.</value>
   </data>
   <data name="StartCameraButton_Content_Stop" xml:space="preserve">
-    <value>⏹ Kamera stoppen</value>
+    <value>⏹ Stop camera</value>
   </data>
   <data name="NoCameraConnected_Message" xml:space="preserve">
-    <value>Keine Kamera verbunden.\nKamera in der Sidebar auswählen.</value>
+    <value>No camera connected.\nSelect a camera in the sidebar.</value>
   </data>
   <data name="CameraStopped_Message" xml:space="preserve">
-    <value>Kamera gestoppt.</value>
+    <value>Camera stopped.</value>
   </data>
   <data name="ConnectingCamera_Message" xml:space="preserve">
-    <value>Verbinde Kamera...\nWarte auf erstes Bild.</value>
+    <value>Connecting camera...\nWaiting for the first frame.</value>
   </data>
   <data name="CameraActive_Message" xml:space="preserve">
-    <value>Kamera aktiv: {0}</value>
+    <value>Camera active: {0}</value>
   </data>
   <data name="Error_Title" xml:space="preserve">
-    <value>Fehler</value>
+    <value>Error</value>
   </data>
   <data name="CameraCouldNotBeStarted_Message" xml:space="preserve">
-    <value>Kamera konnte nicht gestartet werden.</value>
+    <value>The camera could not be started.</value>
   </data>
   <data name="WaitingForLiveImage_Message" xml:space="preserve">
-    <value>Warte auf Live-Bild</value>
+    <value>Waiting for live image</value>
   </data>
   <data name="LanguageLabel" xml:space="preserve">
-    <value>Sprache</value>
-  </data>
-  <data name="LanguageGerman" xml:space="preserve">
-    <value>Deutsch</value>
-  </data>
-  <data name="LanguageEnglish" xml:space="preserve">
-    <value>English</value>
+    <value>Language</value>
   </data>
   <data name="CameraSectionTitle" xml:space="preserve">
-    <value>🎥 Kamera</value>
+    <value>🎥 Camera</value>
   </data>
   <data name="PrevFrameButton_Content" xml:space="preserve">
-    <value>◀ Vorheriges</value>
+    <value>◀ Previous</value>
   </data>
   <data name="PlayPauseButton_Content_Play" xml:space="preserve">
-    <value>▶ Abspielen</value>
+    <value>▶ Play</value>
   </data>
   <data name="PauseButton_Content" xml:space="preserve">
     <value>⏸ Pause</value>
   </data>
   <data name="NextFrameButton_Content" xml:space="preserve">
-    <value>Nächstes ▶</value>
+    <value>Next ▶</value>
   </data>
   <data name="PlaybackFpsHint" xml:space="preserve">
     <value>fps (1-120)</value>
   </data>
   <data name="StatusReadyMessage" xml:space="preserve">
-    <value>Bereit. Kamera auswählen und starten.</value>
+    <value>Ready. Select a camera and start.</value>
   </data>
   <data name="CameraSearchMessage" xml:space="preserve">
-    <value>Kameras werden gesucht...</value>
+    <value>Searching for cameras...</value>
   </data>
   <data name="CameraLoadErrorMessage" xml:space="preserve">
-    <value>Fehler beim Laden der Kameras</value>
+    <value>Error loading cameras</value>
   </data>
   <data name="NoCameraSelected" xml:space="preserve">
-    <value>Keine Kamera ausgewählt</value>
+    <value>No camera selected</value>
   </data>
   <data name="NoCameraSelectedHint" xml:space="preserve">
-    <value>Keine Kamera ausgewählt.</value>
+    <value>No camera selected.</value>
   </data>
   <data name="SdkResolutionMessage" xml:space="preserve">
-    <value>SDK-Live-View: native Kamera-Auflösung</value>
+    <value>SDK live view: native camera resolution</value>
   </data>
   <data name="SdkResolutionHint" xml:space="preserve">
-    <value>Bei SDK-Kameras wird die native Kamera-Auflösung verwendet. Die manuelle Auswahl ist hier deaktiviert.</value>
+    <value>For SDK cameras, the native camera resolution is used. Manual selection is disabled here.</value>
   </data>
   <data name="NoResolutionsAvailable" xml:space="preserve">
-    <value>Keine Auflösungen verfügbar</value>
+    <value>No resolutions available</value>
   </data>
   <data name="NoResolutionsAvailableHint" xml:space="preserve">
-    <value>Für diese Kamera wurden keine manuellen Auflösungen gefunden.</value>
+    <value>No manual resolutions were found for this camera.</value>
   </data>
   <data name="ResolutionBeforeStart" xml:space="preserve">
-    <value>Auflösung vor dem Start wählen.</value>
+    <value>Choose a resolution before starting.</value>
   </data>
   <data name="ResolutionLoadedMessage" xml:space="preserve">
-    <value>Auflösungen geladen: {0} verfügbar</value>
+    <value>Loaded {0} resolutions.</value>
   </data>
   <data name="ResolutionLoadError" xml:space="preserve">
-    <value>Fehler beim Laden</value>
+    <value>Error loading resolutions</value>
   </data>
   <data name="ResolutionLoadErrorHint" xml:space="preserve">
-    <value>Auflösungen konnten nicht geladen werden.</value>
+    <value>The resolutions could not be loaded.</value>
   </data>
   <data name="ResolutionSelectedMessage" xml:space="preserve">
-    <value>Auflösung ausgewählt: {0}</value>
+    <value>Resolution selected: {0}</value>
   </data>
   <data name="PlaybackPausedMessage" xml:space="preserve">
-    <value>Playback pausiert.</value>
+    <value>Playback paused.</value>
   </data>
   <data name="PlaybackStartedMessage" xml:space="preserve">
-    <value>Playback gestartet mit {0} fps.</value>
+    <value>Playback started at {0} fps.</value>
   </data>
   <data name="FrameCounterText_Zero" xml:space="preserve">
     <value>Frame: 0</value>
@@ -161,22 +130,22 @@
     <value>Playback: {0} fps</value>
   </data>
   <data name="PlaybackSpeedChangedMessage" xml:space="preserve">
-    <value>Playback-Geschwindigkeit: {0} fps</value>
+    <value>Playback speed: {0} fps</value>
   </data>
   <data name="TimelineKeyframeStatusFormat" xml:space="preserve">
     <value>Keyframe: Frame {0} ({1}/{2})</value>
   </data>
   <data name="TimelineCursorWithoutKeyframeFormat" xml:space="preserve">
-    <value>Cursor: Frame {0} ohne Capture-Keyframe</value>
+    <value>Cursor: Frame {0} without a capture keyframe</value>
   </data>
   <data name="TimelineCursorOnKeyframeMessage" xml:space="preserve">
-    <value>Timeline-Cursor auf Capture-Keyframe {0} gesetzt.</value>
+    <value>Timeline cursor moved to capture keyframe {0}.</value>
   </data>
   <data name="TimelineCursorMessage" xml:space="preserve">
-    <value>Timeline-Cursor auf Frame {0} gesetzt.</value>
+    <value>Timeline cursor moved to frame {0}.</value>
   </data>
   <data name="TimelineEmptyMessage" xml:space="preserve">
-    <value>Timeline leer. Cursor auf Frame 1.</value>
+    <value>Timeline empty. Cursor at frame 1.</value>
   </data>
   <data name="PlaybackModeLabel" xml:space="preserve">
     <value>Playback</value>
@@ -188,169 +157,169 @@
     <value>{0}: Frame {1} ({2}/{3})</value>
   </data>
   <data name="TimelineCursorFrameCountFormat" xml:space="preserve">
-    <value>Cursor: Frame {0} | {1} Capture-Keyframes</value>
+    <value>Cursor: Frame {0} | {1} capture keyframes</value>
   </data>
   <data name="TimelineRangeText_Format" xml:space="preserve">
-    <value>Start 1 | Ende {0}</value>
+    <value>Start 1 | End {0}</value>
   </data>
   <data name="ImportProgressDialog_Processing" xml:space="preserve">
-    <value>Verarbeitung...</value>
+    <value>Processing...</value>
   </data>
   <data name="ImportProgressDialog_Close" xml:space="preserve">
-    <value>Schließen</value>
+    <value>Close</value>
   </data>
   <data name="ImportProgressDialog_Stopping" xml:space="preserve">
-    <value>Stoppt...</value>
+    <value>Stopping...</value>
   </data>
   <data name="ImportProgressDialog_Canceling" xml:space="preserve">
-    <value>Import wird abgebrochen...</value>
+    <value>Import is being canceled...</value>
   </data>
   <data name="OnionSkinToggle_On" xml:space="preserve">
-    <value>Onion Skin: AN ✓</value>
+    <value>Onion Skin: ON ✓</value>
   </data>
   <data name="OnionSkinToggle_Off" xml:space="preserve">
-    <value>Onion Skin: AUS</value>
+    <value>Onion Skin: OFF</value>
   </data>
   <data name="OnionSkinColorCode_On" xml:space="preserve">
-    <value>Onion Skin Farbcodierung: AN</value>
+    <value>Onion Skin color coding: ON</value>
   </data>
   <data name="OnionSkinColorCode_Off" xml:space="preserve">
-    <value>Onion Skin Farbcodierung: AUS</value>
+    <value>Onion Skin color coding: OFF</value>
   </data>
   <data name="LoopPlayback_On" xml:space="preserve">
-    <value>Loop-Vergleich: AN</value>
+    <value>Loop comparison: ON</value>
   </data>
   <data name="LoopPlayback_Off" xml:space="preserve">
-    <value>Loop-Vergleich: AUS</value>
+    <value>Loop comparison: OFF</value>
   </data>
   <data name="OverlayPicker_Title" xml:space="preserve">
-    <value>Overlay Video/Bild wählen</value>
+    <value>Choose overlay video/image</value>
   </data>
   <data name="OverlayUnsupportedFileType" xml:space="preserve">
-    <value>Dateityp für Overlay wird nicht unterstützt.</value>
+    <value>The file type is not supported for overlays.</value>
   </data>
   <data name="StreamDeck_Title" xml:space="preserve">
     <value>Stream Deck</value>
   </data>
   <data name="StreamDeck_Status_Connected" xml:space="preserve">
-    <value>● Verbunden</value>
+    <value>● Connected</value>
   </data>
   <data name="StreamDeck_Status_NotFound" xml:space="preserve">
-    <value>● Nicht gefunden</value>
+    <value>● Not found</value>
   </data>
   <data name="StreamDeck_Status_Error" xml:space="preserve">
-    <value>● Fehler</value>
+    <value>● Error</value>
   </data>
   <data name="StreamDeck_ConnectedMessage" xml:space="preserve">
-    <value>Stream Deck verbunden und bereit.</value>
+    <value>Stream Deck connected and ready.</value>
   </data>
   <data name="StreamDeck_NotFoundMessage" xml:space="preserve">
-    <value>Kein Stream Deck gefunden.\nBitte Gerät anschließen und erneut versuchen.</value>
+    <value>No Stream Deck found.\nPlease connect the device and try again.</value>
   </data>
   <data name="StreamDeck_ConnectionErrorMessage" xml:space="preserve">
-    <value>Fehler bei der Verbindung zum Stream Deck: {0}</value>
+    <value>Error connecting to the Stream Deck: {0}</value>
   </data>
   <data name="SelectProjectFolder_Title" xml:space="preserve">
-    <value>Projektordner auswählen</value>
+    <value>Select project folder</value>
   </data>
   <data name="ProjectFolderStatus_Format" xml:space="preserve">
-    <value>Projektordner: {0}</value>
+    <value>Project folder: {0}</value>
   </data>
   <data name="CaptureFormat_PngWithProxy" xml:space="preserve">
-    <value>Capture-Format: PNG-Master + JPEG-Proxies</value>
+    <value>Capture format: PNG master + JPEG proxies</value>
   </data>
   <data name="CaptureFormat_JpegMaster" xml:space="preserve">
-    <value>Capture-Format: JPEG-Master</value>
+    <value>Capture format: JPEG master</value>
   </data>
   <data name="ShotActiveMessage_Format" xml:space="preserve">
-    <value>Shot aktiv: {0}</value>
+    <value>Shot active: {0}</value>
   </data>
   <data name="HistogramPlaceholder_NoLiveImage" xml:space="preserve">
-    <value>Kein Live-Bild</value>
+    <value>No live image</value>
   </data>
   <data name="HistogramStats_Default" xml:space="preserve">
-    <value>Schwarz 0.0% | Mittel 0.0% | Weiß 0.0%</value>
+    <value>Black 0.0% | Mid 0.0% | White 0.0%</value>
   </data>
   <data name="RawImport_NikonSdkNotFound" xml:space="preserve">
-    <value>Nikon SDK: kein lokales NkImgSDK gefunden. Bitte SDKs/Nikon prüfen.</value>
+    <value>Nikon SDK: no local NkImgSDK found. Please check SDKs/Nikon.</value>
   </data>
   <data name="RawImport_NikonSdkReadyFormat" xml:space="preserve">
-    <value>Nikon SDK: {0} bereit</value>
+    <value>Nikon SDK: {0} ready</value>
   </data>
   <data name="RawImport_ImportButton_Busy" xml:space="preserve">
-    <value>NEF-Import läuft...</value>
+    <value>NEF import in progress...</value>
   </data>
   <data name="RawImport_ImportButton_Idle" xml:space="preserve">
-    <value>NEF importieren</value>
+    <value>Import NEF</value>
   </data>
   <data name="RawImport_SelectFolderTitle" xml:space="preserve">
-    <value>RAW-Ordner auswählen</value>
+    <value>Select RAW folder</value>
   </data>
   <data name="RawImport_SourceFolderStatusFormat" xml:space="preserve">
-    <value>RAW-Quelle: {0}</value>
+    <value>RAW source: {0}</value>
   </data>
   <data name="RawImport_Title" xml:space="preserve">
-    <value>NEF-Import</value>
+    <value>NEF import</value>
   </data>
   <data name="RawImport_NoSdkFoundMessage" xml:space="preserve">
-    <value>Kein passendes Nikon Image SDK gefunden.\nBitte den lokalen SDK-Ordner unter SDKs/Nikon prüfen.</value>
+    <value>No suitable Nikon Image SDK found.\nPlease check the local SDK folder under SDKs/Nikon.</value>
   </data>
   <data name="RawImport_NoSourceFolderMessage" xml:space="preserve">
-    <value>Bitte zuerst einen RAW-Ordner mit NEF-Dateien auswählen.</value>
+    <value>Please select a RAW folder containing NEF files first.</value>
   </data>
   <data name="RawImport_Preparing" xml:space="preserve">
-    <value>Vorbereitung...</value>
+    <value>Preparing...</value>
   </data>
   <data name="RawImport_ProgressStatusFormat" xml:space="preserve">
-    <value>NEF-Import {0}/{1}: {2}</value>
+    <value>NEF import {0}/{1}: {2}</value>
   </data>
   <data name="NewProjectDialog_SelectLocationTitle" xml:space="preserve">
-    <value>Speicherort auswählen</value>
+    <value>Select location</value>
   </data>
   <data name="CameraCouldNotBeStartedWithReason_Message" xml:space="preserve">
-    <value>Kamera konnte nicht gestartet werden: {0}</value>
+    <value>The camera could not be started: {0}</value>
   </data>
   <data name="ReferenceOverlay_LoadedMessage" xml:space="preserve">
-    <value>Referenz geladen: {0}</value>
+    <value>Reference loaded: {0}</value>
   </data>
   <data name="TimelineDopeSheetLabel" xml:space="preserve">
     <value>Dope Sheet</value>
   </data>
   <data name="TimelineSummaryLabel" xml:space="preserve">
-    <value>Zusammenfassung</value>
+    <value>Summary</value>
   </data>
   <data name="TimelineCaptureLabel" xml:space="preserve">
-    <value>Aufnahme</value>
+    <value>Capture</value>
   </data>
   <data name="TimelineMotionCtrlLabel" xml:space="preserve">
     <value>Motion Ctrl</value>
   </data>
   <data name="TimelineDmxLightLabel" xml:space="preserve">
-    <value>DMX Licht</value>
+    <value>DMX Light</value>
   </data>
   <data name="CaptureTabHeader" xml:space="preserve">
-    <value>Aufnahme</value>
+    <value>Capture</value>
   </data>
   <data name="OnionOverlayTabHeader" xml:space="preserve">
     <value>Onion &amp; Overlay</value>
   </data>
   <data name="ProjectRawTabHeader" xml:space="preserve">
-    <value>Projekt &amp; RAW</value>
+    <value>Project &amp; RAW</value>
   </data>
   <data name="HardwareTabHeader" xml:space="preserve">
     <value>Hardware</value>
   </data>
   <data name="ResolutionLabel" xml:space="preserve">
-    <value>Auflösung</value>
+    <value>Resolution</value>
   </data>
   <data name="HistogramTitle" xml:space="preserve">
-    <value>Histogramm</value>
+    <value>Histogram</value>
   </data>
   <data name="CaptureSectionTitle" xml:space="preserve">
-    <value>📸 Aufnahme</value>
+    <value>📸 Capture</value>
   </data>
   <data name="CaptureShortcutText" xml:space="preserve">
-    <value>Shortcut: Leertaste</value>
+    <value>Shortcut: Spacebar</value>
   </data>
   <data name="OnionSectionTitle" xml:space="preserve">
     <value>🧅 Onion Skin</value>
@@ -374,75 +343,81 @@
     <value>5 Layer</value>
   </data>
   <data name="FastPresetsLabel" xml:space="preserve">
-    <value>Schnell-Presets:</value>
+    <value>Quick presets:</value>
   </data>
   <data name="LoadReferenceOverlayButton_Content" xml:space="preserve">
-    <value>Video/Bild laden</value>
+    <value>Load video/image</value>
   </data>
   <data name="LoadReferenceSequenceButton_Content" xml:space="preserve">
-    <value>Bildsequenz laden</value>
+    <value>Load image sequence</value>
   </data>
   <data name="RemoveReferenceButton_Content" xml:space="preserve">
-    <value>Referenz entfernen</value>
+    <value>Remove reference</value>
   </data>
   <data name="CompositionOverlaysTitle" xml:space="preserve">
-    <value>📐 Kompositions-Overlays</value>
+    <value>📐 Composition overlays</value>
   </data>
   <data name="ProjectSectionTitle" xml:space="preserve">
-    <value>📁 Projekt</value>
+    <value>📁 Project</value>
   </data>
   <data name="CaptureFormatLabel" xml:space="preserve">
-    <value>Capture-Format</value>
+    <value>Capture format</value>
   </data>
   <data name="ShotNameLabel" xml:space="preserve">
-    <value>Shot-Name</value>
+    <value>Shot name</value>
   </data>
   <data name="ApplyShotButton_Content" xml:space="preserve">
-    <value>Shot übernehmen</value>
+    <value>Apply shot</value>
   </data>
   <data name="SelectProjectFolderButton_Content" xml:space="preserve">
-    <value>Ordner wählen</value>
+    <value>Choose folder</value>
   </data>
   <data name="NefImportSectionTitle" xml:space="preserve">
-    <value>NEF-Import</value>
+    <value>NEF import</value>
   </data>
   <data name="RawSourceLabel" xml:space="preserve">
-    <value>RAW-Quelle</value>
+    <value>RAW source</value>
   </data>
   <data name="StartFrameLabel" xml:space="preserve">
-    <value>Startframe</value>
+    <value>Start frame</value>
   </data>
   <data name="ProxyFormatLabel" xml:space="preserve">
-    <value>Proxy-Format</value>
+    <value>Proxy format</value>
   </data>
   <data name="ImportInstructionsText" xml:space="preserve">
-    <value>Import: PNG-Master in Masters/&lt;Shot&gt;, Proxy in Proxy/&lt;Shot&gt;</value>
+    <value>Import: PNG master in Masters/&lt;Shot&gt;, proxy in Proxy/&lt;Shot&gt;</value>
   </data>
   <data name="SelectRawSourceFolderButton_Content" xml:space="preserve">
-    <value>NEF-Ordner wählen</value>
+    <value>Choose NEF folder</value>
   </data>
   <data name="CameraIntegrationTitle" xml:space="preserve">
-    <value>📷 Kamera-Integration</value>
+    <value>📷 Camera integration</value>
   </data>
   <data name="StreamDeckSectionTitle" xml:space="preserve">
     <value>🎛 Stream Deck</value>
   </data>
   <data name="ConnectStreamDeckButton_Content" xml:space="preserve">
-    <value>Verbinden</value>
+    <value>Connect</value>
   </data>
   <data name="UpdateAvailable_Title" xml:space="preserve">
-    <value>Neue Version verfügbar</value>
+    <value>A new version is available</value>
   </data>
   <data name="UpdateAvailable_VersionFormat" xml:space="preserve">
-    <value>Aktuell: {0} | Neu: {1}</value>
+    <value>Current: {0} | New: {1}</value>
   </data>
   <data name="UpdateAvailable_NoReleaseNotes" xml:space="preserve">
-    <value>Keine Release-Notes verfügbar.</value>
+    <value>No release notes provided.</value>
   </data>
   <data name="UpdateAvailable_Later" xml:space="preserve">
-    <value>Später</value>
+    <value>Later</value>
   </data>
   <data name="UpdateAvailable_Update" xml:space="preserve">
-    <value>Aktualisieren</value>
+    <value>Update</value>
+  </data>
+  <data name="LanguageGerman" xml:space="preserve">
+    <value>German</value>
+  </data>
+  <data name="LanguageEnglish" xml:space="preserve">
+    <value>English</value>
   </data>
 </root>

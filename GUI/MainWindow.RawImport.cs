@@ -41,12 +41,12 @@ namespace OpenStopMotionStudio.GUI
 
             if (_nikonImageSdkLocation is null)
             {
-                RawSdkStatusText.Text = "Nikon SDK: kein lokales NkImgSDK gefunden. Bitte SDKs/Nikon pruefen.";
+                RawSdkStatusText.Text = _resourceManager.GetString("RawImport_NikonSdkNotFound") ?? "Nikon SDK: no local NkImgSDK found. Please check SDKs/Nikon.";
                 RawSdkStatusText.Foreground = SolidColorBrush.Parse("#FF9A76");
                 return;
             }
 
-            RawSdkStatusText.Text = $"Nikon SDK: {_nikonImageSdkLocation.DisplayName} bereit";
+            RawSdkStatusText.Text = string.Format(_resourceManager.GetString("RawImport_NikonSdkReadyFormat") ?? "Nikon SDK: {0} ready", _nikonImageSdkLocation.DisplayName);
             RawSdkStatusText.Foreground = SolidColorBrush.Parse("#99D98C");
         }
 
@@ -58,19 +58,21 @@ namespace OpenStopMotionStudio.GUI
 
             CancelNefImportButton.IsEnabled = _rawImportBusy;
 
-            ImportNefButton.Content = _rawImportBusy ? "NEF-Import laeuft..." : "NEF importieren";
+            ImportNefButton.Content = _rawImportBusy
+                ? _resourceManager.GetString("RawImport_ImportButton_Busy") ?? "NEF import in progress..."
+                : _resourceManager.GetString("RawImport_ImportButton_Idle") ?? "Import NEF";
         }
 
         private async void SelectRawSourceFolder_Click(object sender, RoutedEventArgs e)
         {
-            string? folder = await BrowseForFolder("RAW-Ordner auswählen");
+            string? folder = await BrowseForFolder(_resourceManager.GetString("RawImport_SelectFolderTitle") ?? "Select RAW folder");
             if (string.IsNullOrWhiteSpace(folder))
                 return;
 
             _rawSourceFolder = folder;
             RawSourceFolderText.Text = folder;
             UpdateRawImportUiState();
-            SetStatus($"RAW-Quelle: {folder}");
+            SetStatus(string.Format(_resourceManager.GetString("RawImport_SourceFolderStatusFormat") ?? "RAW source: {0}", folder));
         }
 
         private async void ImportNefButton_Click(object sender, RoutedEventArgs e)
@@ -83,8 +85,8 @@ namespace OpenStopMotionStudio.GUI
             {
                 await MessageBox.Show(
                     this,
-                    "NEF-Import",
-                    "Kein passendes Nikon Image SDK gefunden.\nBitte den lokalen SDK-Ordner unter SDKs/Nikon prüfen.");
+                    _resourceManager.GetString("RawImport_Title") ?? "NEF import",
+                    _resourceManager.GetString("RawImport_NoSdkFoundMessage") ?? "No suitable Nikon Image SDK found.\nPlease check the local SDK folder under SDKs/Nikon.");
                 UpdateRawImportUiState();
                 return;
             }
@@ -93,8 +95,8 @@ namespace OpenStopMotionStudio.GUI
             {
                 await MessageBox.Show(
                     this,
-                    "NEF-Import",
-                    "Bitte zuerst einen RAW-Ordner mit NEF-Dateien auswählen.");
+                    _resourceManager.GetString("RawImport_Title") ?? "NEF import",
+                    _resourceManager.GetString("RawImport_NoSourceFolderMessage") ?? "Please select a RAW folder containing NEF files first.");
                 return;
             }
 
@@ -103,7 +105,7 @@ namespace OpenStopMotionStudio.GUI
             UpdateRawImportUiState();
 
             ImportProgressDialog progressDialog = new();
-            progressDialog.UpdateProgress(0, 1, "Vorbereitung...");
+            progressDialog.UpdateProgress(0, 1, _resourceManager.GetString("RawImport_Preparing") ?? "Preparing...");
             progressDialog.CancelRequested += CancelNefImportRequested;
             Task progressDialogTask = progressDialog.ShowDialog(this);
             bool showCompletionState = false;
@@ -124,7 +126,7 @@ namespace OpenStopMotionStudio.GUI
             Progress<NefImportProgress> progress = new(info =>
             {
                 progressDialog.UpdateProgress(info.Current, info.Total, info.FileName);
-                SetStatus($"NEF-Import {info.Current}/{info.Total}: {info.FileName}");
+                SetStatus(string.Format(_resourceManager.GetString("RawImport_ProgressStatusFormat") ?? "NEF import {0}/{1}: {2}", info.Current, info.Total, info.FileName));
             });
 
             try
@@ -145,13 +147,13 @@ namespace OpenStopMotionStudio.GUI
                     completionDelayMs = ImportDialogAutoCloseCanceledMs;
                     if (summary.ImportedCount > 0)
                     {
-                        progressDialog.ShowCompletion("NEF-Import abgebrochen", $"{summary.ImportedCount} Frames bereits importiert.");
-                        SetStatus($"NEF-Import abgebrochen: {summary.ImportedCount} Frames wurden bereits importiert.");
+                        progressDialog.ShowCompletion(_resourceManager.GetString("RawImport_CanceledTitle") ?? "NEF import canceled", string.Format(_resourceManager.GetString("RawImport_CanceledWithFramesMessage") ?? "{0} frames already imported.", summary.ImportedCount));
+                        SetStatus(string.Format(_resourceManager.GetString("RawImport_CanceledStatusWithFrames") ?? "NEF import canceled: {0} frames were already imported.", summary.ImportedCount));
                     }
                     else
                     {
-                        progressDialog.ShowCompletion("NEF-Import abgebrochen", "Keine Frames importiert.");
-                        SetStatus("NEF-Import abgebrochen. Keine Frames importiert.");
+                        progressDialog.ShowCompletion(_resourceManager.GetString("RawImport_CanceledTitle") ?? "NEF import canceled", _resourceManager.GetString("RawImport_CanceledNoFramesMessage") ?? "No frames imported.");
+                        SetStatus(_resourceManager.GetString("RawImport_CanceledNoFramesStatus") ?? "NEF import canceled. No frames imported.");
                     }
                     return;
                 }
@@ -169,32 +171,32 @@ namespace OpenStopMotionStudio.GUI
 
                     await MessageBox.Show(
                         this,
-                        "NEF-Import mit Warnungen",
-                        $"Import abgeschlossen mit Warnungen.\nErfolgreich: {summary.ImportedCount}\nÜbersprungen: {summary.FailedCount}\n\n{details}");
+                        _resourceManager.GetString("RawImport_WarningsTitle") ?? "NEF import with warnings",
+                        string.Format(_resourceManager.GetString("RawImport_WarningsMessage") ?? "Import completed with warnings.\nSuccessful: {0}\nSkipped: {1}\n\n{2}", summary.ImportedCount, summary.FailedCount, details));
 
                     progressDialog.ShowCompletion(
-                        "NEF-Import mit Warnungen",
-                        $"Importiert: {summary.ImportedCount} | Übersprungen: {summary.FailedCount}",
+                        _resourceManager.GetString("RawImport_WarningsTitle") ?? "NEF import with warnings",
+                        string.Format(_resourceManager.GetString("RawImport_WarningsSummary") ?? "Imported: {0} | Skipped: {1}", summary.ImportedCount, summary.FailedCount),
                         isError: true);
 
-                    SetStatus($"NEF-Import mit Warnungen: {summary.ImportedCount} importiert, {summary.FailedCount} übersprungen.");
+                    SetStatus(string.Format(_resourceManager.GetString("RawImport_WarningsStatus") ?? "NEF import with warnings: {0} imported, {1} skipped.", summary.ImportedCount, summary.FailedCount));
                 }
                 else
                 {
                     showCompletionState = true;
                     completionDelayMs = ImportDialogAutoCloseSuccessMs;
-                    progressDialog.ShowCompletion("NEF-Import abgeschlossen", $"{summary.ImportedCount} Frames importiert.");
-                    SetStatus($"NEF-Import fertig: {summary.ImportedCount} Frames nach {summary.MasterFolder}");
+                    progressDialog.ShowCompletion(_resourceManager.GetString("RawImport_CompletedTitle") ?? "NEF import completed", string.Format(_resourceManager.GetString("RawImport_CompletedSummary") ?? "{0} frames imported.", summary.ImportedCount));
+                    SetStatus(string.Format(_resourceManager.GetString("RawImport_CompletedStatus") ?? "NEF import finished: {0} frames to {1}", summary.ImportedCount, summary.MasterFolder));
                 }
             }
             catch (Exception ex)
             {
                 showCompletionState = true;
                 completionDelayMs = ImportDialogAutoCloseErrorMs;
-                progressDialog.ShowCompletion("NEF-Import fehlgeschlagen", ex.Message, isError: true);
+                progressDialog.ShowCompletion(_resourceManager.GetString("RawImport_FailedTitle") ?? "NEF import failed", ex.Message, isError: true);
                 DebugLogger.Instance.LogError("RawImport", $"NEF import failed: {ex.Message}");
-                await MessageBox.Show(this, "NEF-Import", ex.Message);
-                SetStatus($"NEF-Import fehlgeschlagen: {ex.Message}");
+                await MessageBox.Show(this, _resourceManager.GetString("RawImport_Title") ?? "NEF import", ex.Message);
+                SetStatus(string.Format(_resourceManager.GetString("RawImport_FailedStatus") ?? "NEF import failed: {0}", ex.Message));
             }
             finally
             {
@@ -221,7 +223,7 @@ namespace OpenStopMotionStudio.GUI
                 return;
 
             _rawImportCancellation?.Cancel();
-            SetStatus("NEF-Import wird abgebrochen...");
+            SetStatus(_resourceManager.GetString("RawImport_CancelingStatus") ?? "NEF import is being canceled...");
         }
 
         private void RawFrameStartTextBox_KeyDown(object sender, KeyEventArgs e)

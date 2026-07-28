@@ -54,10 +54,10 @@ namespace OpenStopMotionStudio.GUI
             _playbackFps = Math.Clamp(fps, 1, MaxPlaybackFps);
             PlaybackFpsTextBox.Text = _playbackFps.ToString(CultureInfo.InvariantCulture);
             _playbackTimer.Interval = TimeSpan.FromMilliseconds(1000.0 / _playbackFps);
-            PlaybackSpeedLabel.Text = $"Playback: {_playbackFps} fps";
+            UpdatePlaybackSpeedLabel();
 
             if (announce)
-                SetStatus($"Playback-Geschwindigkeit: {_playbackFps} fps");
+                SetStatus(string.Format(_resourceManager.GetString("PlaybackSpeedChangedMessage") ?? "Playback speed: {0} fps", _playbackFps));
         }
 
         private void TimelineFrameScrollBar_ValueChanged(object? sender, RangeBaseValueChangedEventArgs e)
@@ -134,14 +134,14 @@ namespace OpenStopMotionStudio.GUI
                 CapturedFrame selectedFrame = frame!;
                 _playbackIndex = captureIndex;
                 ShowPlaybackFrame(selectedFrame);
-                PlaybackStatusText.Text = $"Keyframe: Frame {selectedFrame.Index} ({captureIndex + 1}/{_capture.Frames.Count})";
+                PlaybackStatusText.Text = string.Format(_resourceManager.GetString("TimelineKeyframeStatusFormat") ?? "Keyframe: Frame {0} ({1}/{2})", selectedFrame.Index, captureIndex + 1, _capture.Frames.Count);
                 DebugLogger.Instance.LogInfo("Timeline", $"Found keyframe at index {captureIndex}");
             }
             else
             {
                 _playbackIndex = -1;
                 HidePlaybackPreview();
-                PlaybackStatusText.Text = $"Cursor: Frame {_timelineCursorFrame} ohne Capture-Keyframe";
+                PlaybackStatusText.Text = string.Format(_resourceManager.GetString("TimelineCursorWithoutKeyframeFormat") ?? "Cursor: Frame {0} without a capture keyframe", _timelineCursorFrame);
                 DebugLogger.Instance.LogInfo("Timeline", $"No keyframe at frame {_timelineCursorFrame}");
             }
 
@@ -153,8 +153,8 @@ namespace OpenStopMotionStudio.GUI
             if (announce)
             {
                 SetStatus(_playbackIndex >= 0
-                    ? $"Timeline-Cursor auf Capture-Keyframe {_timelineCursorFrame} gesetzt."
-                    : $"Timeline-Cursor auf Frame {_timelineCursorFrame} gesetzt.");
+                    ? string.Format(_resourceManager.GetString("TimelineCursorOnKeyframeMessage") ?? "Timeline cursor moved to capture keyframe {0}.", _timelineCursorFrame)
+                    : string.Format(_resourceManager.GetString("TimelineCursorMessage") ?? "Timeline cursor moved to frame {0}.", _timelineCursorFrame));
             }
         }
 
@@ -217,20 +217,22 @@ namespace OpenStopMotionStudio.GUI
                 _playbackIndex = -1;
                 // NOTE: Do NOT reset _timelineCursorFrame here - it breaks navigation before first capture!
                 // The cursor position should persist independently of frame count.
-                PlaybackStatusText.Text = "Timeline leer. Cursor auf Frame 1.";
+                PlaybackStatusText.Text = _resourceManager.GetString("TimelineEmptyMessage") ?? "Timeline empty. Cursor at frame 1.";
             }
             else if (_playbackIndex >= 0 && _playbackIndex < _capture.Frames.Count)
             {
                 CapturedFrame currentFrame = _capture.Frames[_playbackIndex];
-                string modeLabel = _playbackTimer.IsEnabled ? "Playback" : "Keyframe";
-                PlaybackStatusText.Text = $"{modeLabel}: Frame {currentFrame.Index} ({_playbackIndex + 1}/{_capture.Frames.Count})";
+                string modeLabel = _playbackTimer.IsEnabled
+                    ? _resourceManager.GetString("PlaybackModeLabel") ?? "Playback"
+                    : _resourceManager.GetString("KeyframeModeLabel") ?? "Keyframe";
+                PlaybackStatusText.Text = string.Format(_resourceManager.GetString("PlaybackFrameStatusFormat") ?? "{0}: Frame {1} ({2}/{3})", modeLabel, currentFrame.Index, _playbackIndex + 1, _capture.Frames.Count);
             }
             else
             {
-                PlaybackStatusText.Text = $"Cursor: Frame {_timelineCursorFrame} | {_capture.Frames.Count} Capture-Keyframes";
+                PlaybackStatusText.Text = string.Format(_resourceManager.GetString("TimelineCursorFrameCountFormat") ?? "Cursor: Frame {0} | {1} capture keyframes", _timelineCursorFrame, _capture.Frames.Count);
             }
 
-            TimelineRangeText.Text = $"Start 1 | Ende {GetTimelineEndFrame()}";
+            TimelineRangeText.Text = string.Format(_resourceManager.GetString("TimelineRangeText_Format") ?? "Start 1 | End {0}", GetTimelineEndFrame());
             SyncTimelineScrollBar();
             RenderTimeline();
         }

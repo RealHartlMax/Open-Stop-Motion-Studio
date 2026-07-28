@@ -1,4 +1,4 @@
-# Open Stop Motion Studio — v0.1.1
+# Open Stop Motion Studio — v0.2.3
 
 **License:** GPLv3  
 **Platform:** Windows, macOS, Linux (.NET 10, Avalonia)  
@@ -17,6 +17,12 @@
 **Open Stop Motion Studio** is an open-source, cross-platform stop-motion application for hobby and professional workflows. This project is in an early but usable MVP state, with a focus on camera preview, frame capture, timeline playback, onion skinning, and initial RAW import capabilities.
 
 It is not yet a full replacement for tools like Dragonframe. Features such as EXR master output, full tethered DSLR control across all supported vendors, motion control, and DMX authoring are planned for future releases.
+
+## Recent Updates
+
+- v0.2.3: Improved Linux camera discovery for additional camera devices, made project loading more resilient when preview images are missing or invalid, added an in-app language switch with English support, and updated release metadata and project documentation.
+- v0.2.2: Added structured release metadata and changelog support for update manifest entries.
+- v0.2.1: Fixed cross-platform build and CI workflow issues for Linux/macOS.
 
 ## Current Feature Set
 
@@ -101,9 +107,9 @@ It is not yet a full replacement for tools like Dragonframe. Features such as EX
     ```
 3.  Build the application for your desired platform (Linux, Intel Mac, or Apple Silicon Mac) by running the `build.sh` script with the target version:
     ```bash
-    ./build.sh 0.1.1
+    ./build.sh 0.2.3
     ```
-    This will generate `.tar.gz` archives (e.g., `OSMS-linux-x64-v0.1.1.tar.gz`) in the root directory.
+    This will generate `.tar.gz` archives (e.g., `OSMS-linux-x64-v0.2.3.tar.gz`) in the root directory.
 4.  Extract the desired `.tar.gz` archive.
 5.  Place the `start.sh` script (also made executable with `chmod +x start.sh`) inside the root of the extracted application folder (next to the `OpenStopMotionStudio` executable).
 6.  Run the application:
@@ -196,6 +202,12 @@ OpenStopMotionStudio/
 
 Es ist noch kein vollständiger Ersatz für Werkzeuge wie Dragonframe. Funktionen wie EXR-Master-Ausgabe, vollständige angebundene DSLR-Steuerung über alle unterstützten Hersteller hinweg, Motion Control und DMX-Authoring sind für zukünftige Versionen geplant.
 
+## Aktuelle Änderungen
+
+- v0.2.3: Verbesserte Kamera-Erkennung unter Linux für zusätzliche Geräte, robusteres Projekt-Laden bei fehlenden oder beschädigten Vorschaubildern, eingebauten Sprachumschaltung mit englischer Unterstützung sowie aktualisierte Release-Metadaten und Projekt-Dokumentation.
+- v0.2.2: Strukturierte Release-Metadaten und Changelog-Unterstützung für Update-Manifest-Einträge ergänzt.
+- v0.2.1: Fehler im plattformübergreifenden Build und in CI-Workflows für Linux/macOS behoben.
+
 ## Aktueller Funktionsstand
 
 ### Aufnahme und Vorschau
@@ -279,9 +291,9 @@ Es ist noch kein vollständiger Ersatz für Werkzeuge wie Dragonframe. Funktione
     ```
 3.  Kompilieren Sie die Anwendung für Ihre gewünschte Plattform (Linux, Intel Mac oder Apple Silicon Mac), indem Sie das `build.sh`-Skript mit der Zielversion ausführen:
     ```bash
-    ./build.sh 0.1.1
+    ./build.sh 0.2.3
     ```
-    Dies erstellt `.tar.gz`-Archive (z.B. `OSMS-linux-x64-v0.1.1.tar.gz`) im Stammverzeichnis des Projekts.
+    Dies erstellt `.tar.gz`-Archive (z.B. `OSMS-linux-x64-v0.2.3.tar.gz`) im Stammverzeichnis des Projekts.
 4.  Extrahieren Sie das gewünschte `.tar.gz`-Archiv.
 5.  Legen Sie das `start.sh`-Skript (ebenfalls mit `chmod +x start.sh` ausführbar gemacht) im Stammverzeichnis des entpackten Anwendungsordners ab (neben der ausführbaren Datei `OpenStopMotionStudio`).
 6.  Führen Sie die Anwendung aus:

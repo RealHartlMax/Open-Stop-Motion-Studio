@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -63,7 +64,44 @@ namespace OpenStopMotionStudio.Core
                 }
             }
 
+            var gphotoDescriptors = DiscoverGPhotoCameras(maxDevices - deviceDescriptors.Count);
+            deviceDescriptors.AddRange(gphotoDescriptors);
+
             return deviceDescriptors;
+        }
+
+        private static List<CameraDeviceDescriptor> DiscoverGPhotoCameras(int maxDevices)
+        {
+            if (maxDevices <= 0)
+                return new List<CameraDeviceDescriptor>();
+
+            try
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "gphoto2",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+
+                startInfo.ArgumentList.Add("--auto-detect");
+                using var process = Process.Start(startInfo);
+                if (process == null)
+                    return new List<CameraDeviceDescriptor>();
+
+                string stdout = process.StandardOutput.ReadToEnd();
+                string stderr = process.StandardError.ReadToEnd();
+                process.WaitForExit(15000);
+
+                string output = process.ExitCode == 0 ? stdout : stderr;
+                return ParseGPhotoAutoDetectOutput(output, maxDevices);
+            }
+            catch
+            {
+                return new List<CameraDeviceDescriptor>();
+            }
         }
 
         private static bool IsLikelyNonCaptureEndpoint(string cameraName, string deviceName)

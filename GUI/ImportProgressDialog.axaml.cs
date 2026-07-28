@@ -2,11 +2,14 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using System;
+using System.Resources;
 
 namespace OpenStopMotionStudio.GUI
 {
     public partial class ImportProgressDialog : Window
     {
+        private readonly ResourceManager _resourceManager = new("OpenStopMotionStudio.Localization.Strings", typeof(ImportProgressDialog).Assembly);
+
         public event Action? CancelRequested;
 
         public ImportProgressDialog()
@@ -22,7 +25,9 @@ namespace OpenStopMotionStudio.GUI
 
             ProgressTextBlock.Text = $"{safeCurrent} / {total}";
             ImportProgressBar.Value = percent;
-            CurrentFileTextBlock.Text = string.IsNullOrWhiteSpace(fileName) ? "Verarbeitung..." : fileName;
+            CurrentFileTextBlock.Text = string.IsNullOrWhiteSpace(fileName)
+                ? _resourceManager.GetString("ImportProgressDialog_Processing") ?? "Processing..."
+                : fileName;
         }
 
         public void ShowCompletion(string title, string details, bool isError = false)
@@ -30,7 +35,7 @@ namespace OpenStopMotionStudio.GUI
             TitleTextBlock.Text = title;
             CurrentFileTextBlock.Text = details;
             CancelButton.IsEnabled = false;
-            CancelButton.Content = "Schließen";
+            CancelButton.Content = _resourceManager.GetString("ImportProgressDialog_Close") ?? "Close";
 
             if (isError)
                 TitleTextBlock.Foreground = SolidColorBrush.Parse("#FF9A76");
@@ -41,8 +46,8 @@ namespace OpenStopMotionStudio.GUI
         private void CancelButton_Click(object? sender, RoutedEventArgs e)
         {
             CancelButton.IsEnabled = false;
-            CancelButton.Content = "Stoppt...";
-            TitleTextBlock.Text = "Import wird abgebrochen...";
+            CancelButton.Content = _resourceManager.GetString("ImportProgressDialog_Stopping") ?? "Stopping...";
+            TitleTextBlock.Text = _resourceManager.GetString("ImportProgressDialog_Canceling") ?? "Import is being canceled...";
             CancelRequested?.Invoke();
         }
     }

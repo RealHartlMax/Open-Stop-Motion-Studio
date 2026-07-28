@@ -4,7 +4,7 @@ namespace OpenStopMotionStudio.Core
 {
     public sealed class CapturedFrame
     {
-        public CapturedFrame(int index, string shotName, string masterPath, string proxyPath, Bitmap previewFrame)
+        public CapturedFrame(int index, string shotName, string masterPath, string proxyPath, Bitmap? previewFrame)
         {
             Index = index;
             ShotName = shotName;

@@ -10,7 +10,7 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <AssemblyName>OpenStopMotionStudio</AssemblyName>
     <RootNamespace>OpenStopMotionStudio</RootNamespace>
-    <Version>0.2.1</Version>
+    <Version>0.2.3</Version>
     <RuntimeIdentifiers>win-x64;linux-x64;osx-x64;osx-arm64</RuntimeIdentifiers>
     <DefaultItemExcludes>$(DefaultItemExcludes);SDKs\**</DefaultItemExcludes>
   </PropertyGroup>
@@ -33,6 +33,7 @@
     <!-- Stream Deck Anbindung: SDK + Hardware-Provider -->
     <PackageReference Include="OpenMacroBoard.SDK" Version="6.0.0" />
     <PackageReference Include="StreamDeckSharp" Version="6.0.0" />
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
     <PackageReference Include="SixLabors.ImageSharp" Version="2.1.13" />
     <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="1.0.0" />
 
@@ -43,6 +44,7 @@
   <ItemGroup>
     <Compile Remove="Core\CameraDeviceEnumerator.Windows.cs" Condition="'$(OS)' != 'Windows_NT'" />
     <Compile Remove="Core\CameraDeviceEnumerator.Other.cs" Condition="'$(OS)' == 'Windows_NT'" />
+    <Compile Remove="OpenStopMotionStudio.Tests\**\*.cs" />
   </ItemGroup>
 
   <ItemGroup>

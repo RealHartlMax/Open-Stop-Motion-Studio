@@ -13,6 +13,8 @@ namespace OpenStopMotionStudio.Core
                 CameraConnectionKind.CanonEdsdk => new CanonCameraAdapter(descriptor),
                 CameraConnectionKind.NikonMaid => new NikonCameraAdapter(descriptor),
                 CameraConnectionKind.SonyCr => new SonyCameraAdapter(descriptor),
+                CameraConnectionKind.GenericVideo when OperatingSystem.IsLinux() && descriptor.AdapterName.Contains("gphoto2", StringComparison.OrdinalIgnoreCase)
+                    => new GPhotoCameraAdapter(descriptor),
                 _ => descriptor.Vendor switch
                 {
                     "Canon" => new CanonCameraAdapter(descriptor),

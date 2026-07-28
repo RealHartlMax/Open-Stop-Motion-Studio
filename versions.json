@@ -1,9 +1,28 @@
 {
   "updateInfoUrl": "https://raw.githubusercontent.com/Open-Stop-Motion-Studio/Open-Stop-Motion-Studio/main/versions.json",
-  "latestVersion": "0.2.1",
+  "latestVersion": "0.2.3",
   "downloadUrl": "https://github.com/Open-Stop-Motion-Studio/Open-Stop-Motion-Studio/releases/latest",
   "releaseNotes": "",
   "changelog": [
+    {
+      "version": "0.2.3",
+      "date": "2026-07-28",
+      "title": "Linux camera discovery, resilient project loading, and language switch",
+      "highlights": [
+        "Added Linux gphoto2-based camera discovery and adapter support for DSLR-style devices.",
+        "Made project loading resilient to missing or unreadable preview images so projects open without crashing.",
+        "Added an in-app language switch with English resources for the main camera UI."
+      ]
+    },
+    {
+      "version": "0.2.2",
+      "date": "2026-04-11",
+      "title": "Release metadata and changelog support",
+      "highlights": [
+        "Added structured release-note and changelog entry support for newer versions in the update manifest.",
+        "Fixed the update manifest structure to keep release metadata consistent for the in-app updater."
+      ]
+    },
     {
       "version": "0.2.1",
       "date": "2026-04-11",

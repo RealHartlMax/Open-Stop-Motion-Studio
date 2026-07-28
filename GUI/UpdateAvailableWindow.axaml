@@ -39,7 +39,7 @@
                         Orientation="Horizontal"
                         HorizontalAlignment="Right"
                         Spacing="8">
-                <Button Content="Later"
+                <Button x:Name="LaterButton" Content="Later"
                         Width="100"
                         Click="LaterButton_Click"/>
                 <Button x:Name="UpdateButton"

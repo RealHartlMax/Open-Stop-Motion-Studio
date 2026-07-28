@@ -4,6 +4,46 @@ All notable changes to this project are documented here.
 Alle wichtigen Aenderungen an diesem Projekt werden hier dokumentiert.
 
 ---
+## v0.2.3 - 2026-07-28
+
+### English
+
+#### Added
+- **Linux Camera Discovery**: Added gphoto2-based camera discovery and adapter support for DSLR-style devices on Linux.
+- **Language Switch**: Added an in-app language selector with English resources for the main camera UI.
+
+#### Fixed
+- **Project Loading Resilience**: Project loading now tolerates missing or unreadable preview images instead of crashing the restore flow.
+
+### Deutsch
+
+#### Hinzugefuegt
+- **Linux-Kameraerkennung**: Gphoto2-basierte Kameraerkennung und Adapter-Unterstuetzung fuer DSLR-aehnliche Gerate unter Linux hinzugefuegt.
+- **Sprachumschaltung**: Eine In-App-Sprachumschaltung mit englischen Ressourcen fuer die Hauptkamera-UI hinzugefuegt.
+
+#### Behoben
+- **Projekt-Loading-Resilienz**: Das Laden von Projekten toleriert jetzt fehlende oder unlesbare Vorschaubilder statt den Restore-Flow zum Absturz zu bringen.
+
+---
+## v0.2.2 - 2026-04-11
+
+### English
+
+#### Added
+- **Release Metadata**: Added a structured release-note and changelog entry flow for newer versions in the update manifest.
+
+#### Fixed
+- **Update Manifest Compatibility**: Fixed the update manifest structure to keep release metadata consistent for the in-app updater.
+
+### Deutsch
+
+#### Hinzugefuegt
+- **Release-Metadaten**: Einen strukturierten Ablauf fuer Release-Notizen und Changelog-Eintraege fuer neuere Versionen im Update-Manifest hinzugefuegt.
+
+#### Behoben
+- **Update-Manifest-Kompatibilitaet**: Die Struktur des Update-Manifests wurde korrigiert, damit die Release-Metadaten fuer den In-App-Updater konsistent bleiben.
+
+---
 ## v0.2.1 - 2026-04-11
 
 ### English

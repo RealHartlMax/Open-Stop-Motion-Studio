@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using System.IO;
+using System.Resources;
 using System.Threading.Tasks;
 
 namespace OpenStopMotionStudio.GUI
@@ -13,6 +14,8 @@ namespace OpenStopMotionStudio.GUI
 
     public partial class NewProjectDialog : Window
     {
+        private readonly ResourceManager _resourceManager = new("OpenStopMotionStudio.Localization.Strings", typeof(NewProjectDialog).Assembly);
+
         public NewProjectDialog()
         {
             InitializeComponent();
@@ -36,7 +39,7 @@ namespace OpenStopMotionStudio.GUI
             {
                 var folder = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions 
                 { 
-                    Title = "Speicherort auswählen"
+                    Title = _resourceManager.GetString("NewProjectDialog_SelectLocationTitle") ?? "Select location"
                 });
 
                 if (folder.Count > 0)

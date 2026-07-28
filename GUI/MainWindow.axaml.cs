@@ -17,7 +17,9 @@ using System.Reflection;
 using System.Resources;
 using System.IO;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace OpenStopMotionStudio.GUI
 {
@@ -30,6 +32,7 @@ namespace OpenStopMotionStudio.GUI
         private readonly StreamDeckManager _streamDeck = new();
         private readonly DispatcherTimer _playbackTimer = new();
         private readonly ResourceManager _resourceManager = new("OpenStopMotionStudio.Localization.Strings", typeof(MainWindow).Assembly);
+        private CultureInfo _currentCulture = CultureInfo.GetCultureInfo("de-DE");
         private readonly ProjectMigrationService _projectMigration = new();
         private Bitmap? _referenceLoopIcon;
         private Bitmap? _referenceHoldIcon;
@@ -62,6 +65,7 @@ namespace OpenStopMotionStudio.GUI
             DebugLogger.Instance.SetLogDirectory(ProjectPaths.GetLogsFolder(projectPath));
 
             InitializeComponent();
+            ApplySavedLanguage();
             _capture.SetOutputFolder(projectPath);
             BootstrapApplication();
             RestoreProjectState(projectPath);
@@ -72,6 +76,7 @@ namespace OpenStopMotionStudio.GUI
             DebugLogger.Instance.SetLogDirectory(Path.Combine(AppContext.BaseDirectory, "Logs"));
 
             InitializeComponent();
+            ApplySavedLanguage();
             BootstrapApplication();
         }
 
@@ -115,6 +120,7 @@ namespace OpenStopMotionStudio.GUI
             ReferenceOverlayInfoText.Text = _referenceOverlay.SourceLabel;
             UpdateTabIcons();
             UpdateReferencePlaybackModeButton();
+            ApplyUiTranslations();
 
             PlaybackFpsTextBox.Text = DefaultPlaybackFps.ToString();
             ApplyPlaybackFpsFromInput();
@@ -128,6 +134,7 @@ namespace OpenStopMotionStudio.GUI
             UpdateCameraIntegrationStatus();
 
             _uiReady = true;
+            UpdateLanguageSelector();
             _ = RefreshCameraListAsync();
             
             // Register keyboard handlers on TimelineScrollViewer
@@ -156,7 +163,130 @@ namespace OpenStopMotionStudio.GUI
             TimelineScrollViewer.Focus();
             
             DebugLogger.Instance.LogInfo("Startup", "Keyboard and mouse handlers registered. Auto-repeat debouncing enabled.");
-            SetStatus("Bereit. Kamera auswählen und starten.");
+            SetStatus(_resourceManager.GetString("StatusReadyMessage") ?? "Ready. Select a camera and start.");
+        }
+
+        private void ApplySavedLanguage()
+        {
+            string cultureName = Environment.GetEnvironmentVariable("OSMS_LANGUAGE") ?? "de-DE";
+            if (!string.IsNullOrWhiteSpace(cultureName))
+            {
+                try
+                {
+                    _currentCulture = CultureInfo.GetCultureInfo(cultureName);
+                }
+                catch
+                {
+                    _currentCulture = CultureInfo.GetCultureInfo("de-DE");
+                }
+            }
+
+            Thread.CurrentThread.CurrentUICulture = _currentCulture;
+            Thread.CurrentThread.CurrentCulture = _currentCulture;
+            CultureInfo.CurrentUICulture = _currentCulture;
+            CultureInfo.CurrentCulture = _currentCulture;
+        }
+
+        private void UpdateLanguageSelector()
+        {
+            if (LanguageComboBox is null)
+                return;
+
+            LanguageComboBox.Items.Clear();
+            LanguageComboBox.Items.Add(_resourceManager.GetString("LanguageGerman") ?? "German");
+            LanguageComboBox.Items.Add(_resourceManager.GetString("LanguageEnglish") ?? "English");
+            LanguageComboBox.SelectedIndex = _currentCulture.TwoLetterISOLanguageName.Equals("en", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        }
+
+        private void ApplyLanguageSelection()
+        {
+            if (LanguageComboBox is null)
+                return;
+
+            int selectedIndex = LanguageComboBox.SelectedIndex;
+            string cultureName = selectedIndex == 1 ? "en-US" : "de-DE";
+            _currentCulture = CultureInfo.GetCultureInfo(cultureName);
+            Thread.CurrentThread.CurrentUICulture = _currentCulture;
+            Thread.CurrentThread.CurrentCulture = _currentCulture;
+            CultureInfo.CurrentUICulture = _currentCulture;
+            CultureInfo.CurrentCulture = _currentCulture;
+            Environment.SetEnvironmentVariable("OSMS_LANGUAGE", cultureName);
+            RefreshTranslatedUi();
+        }
+
+        private void RefreshTranslatedUi()
+        {
+            if (LanguageLabel is null || LanguageComboBox is null)
+                return;
+
+            LanguageLabel.Text = _resourceManager.GetString("LanguageLabel") ?? "Language";
+            CameraSectionTitle?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("CameraSectionTitle") ?? "Camera");
+            LanguageComboBox.Items.Clear();
+            LanguageComboBox.Items.Add(_resourceManager.GetString("LanguageGerman") ?? "German");
+            LanguageComboBox.Items.Add(_resourceManager.GetString("LanguageEnglish") ?? "English");
+            LanguageComboBox.SelectedIndex = _currentCulture.TwoLetterISOLanguageName.Equals("en", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+
+            PrevFrameButton.Content = _resourceManager.GetString("PrevFrameButton_Content") ?? "◀ Previous";
+            PlayPauseButton.Content = _playbackTimer.IsEnabled
+                ? _resourceManager.GetString("PauseButton_Content") ?? "⏸ Pause"
+                : _resourceManager.GetString("PlayPauseButton_Content_Play") ?? "▶ Play";
+            NextFrameButton.Content = _resourceManager.GetString("NextFrameButton_Content") ?? "Next ▶";
+            PlaybackFpsHintText.Text = _resourceManager.GetString("PlaybackFpsHint") ?? "fps (1-120)";
+            NoCameraText.Text = _resourceManager.GetString("NoCameraConnected_Message") ?? "No camera connected.\nSelect a camera in the sidebar.";
+            ApplyUiTranslations();
+            UpdatePlaybackSpeedLabel();
+            UpdateFrameCounterText();
+
+            if (_uiReady)
+            {
+                RefreshTimelineState();
+                UpdateCameraIntegrationStatus();
+            }
+
+            SetStatus(_resourceManager.GetString("StatusReadyMessage") ?? "Ready. Select a camera and start.");
+        }
+
+        private void ApplyUiTranslations()
+        {
+            TimelineDopeSheetLabel?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("TimelineDopeSheetLabel") ?? "Dope Sheet");
+            TimelineSummaryLabel?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("TimelineSummaryLabel") ?? "Summary");
+            TimelineCaptureLabel?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("TimelineCaptureLabel") ?? "Capture");
+            TimelineMotionCtrlLabel?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("TimelineMotionCtrlLabel") ?? "Motion Ctrl");
+            TimelineDmxLightLabel?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("TimelineDmxLightLabel") ?? "DMX Licht");
+            CaptureTabHeaderText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("CaptureTabHeader") ?? "Capture");
+            OnionOverlayTabHeaderText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("OnionOverlayTabHeader") ?? "Onion & Overlay");
+            ProjectRawTabHeaderText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("ProjectRawTabHeader") ?? "Project & RAW");
+            HardwareTabHeaderText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("HardwareTabHeader") ?? "Hardware");
+            ResolutionLabelText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("ResolutionLabel") ?? "Resolution");
+            HistogramTitleText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("HistogramTitle") ?? "Histogram");
+            CaptureSectionTitleText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("CaptureSectionTitle") ?? "📸 Capture");
+            CaptureShortcutText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("CaptureShortcutText") ?? "Shortcut: Spacebar");
+            OnionSectionTitleText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("OnionSectionTitle") ?? "🧅 Onion Skin");
+            OnionLayerLabelText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("OnionLayerLabel") ?? "Layer");
+            OnionLayer1ComboBoxItem?.SetValue(ComboBoxItem.ContentProperty, _resourceManager.GetString("OnionLayer1Label") ?? "1 Layer");
+            OnionLayer2ComboBoxItem?.SetValue(ComboBoxItem.ContentProperty, _resourceManager.GetString("OnionLayer2Label") ?? "2 Layer");
+            OnionLayer3ComboBoxItem?.SetValue(ComboBoxItem.ContentProperty, _resourceManager.GetString("OnionLayer3Label") ?? "3 Layer");
+            OnionLayer4ComboBoxItem?.SetValue(ComboBoxItem.ContentProperty, _resourceManager.GetString("OnionLayer4Label") ?? "4 Layer");
+            OnionLayer5ComboBoxItem?.SetValue(ComboBoxItem.ContentProperty, _resourceManager.GetString("OnionLayer5Label") ?? "5 Layer");
+            FastPresetsLabelText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("FastPresetsLabel") ?? "Quick presets:");
+            LoadReferenceOverlayButton?.SetValue(Button.ContentProperty, _resourceManager.GetString("LoadReferenceOverlayButton_Content") ?? "Load video/image");
+            LoadReferenceSequenceButton?.SetValue(Button.ContentProperty, _resourceManager.GetString("LoadReferenceSequenceButton_Content") ?? "Load image sequence");
+            RemoveReferenceButton?.SetValue(Button.ContentProperty, _resourceManager.GetString("RemoveReferenceButton_Content") ?? "Remove reference");
+            CompositionOverlaysTitleText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("CompositionOverlaysTitle") ?? "📐 Composition overlays");
+            ProjectSectionTitleText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("ProjectSectionTitle") ?? "📁 Project");
+            CaptureFormatLabelText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("CaptureFormatLabel") ?? "Capture format");
+            ShotNameLabelText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("ShotNameLabel") ?? "Shot name");
+            ApplyShotButton?.SetValue(Button.ContentProperty, _resourceManager.GetString("ApplyShotButton_Content") ?? "Apply shot");
+            SelectProjectFolderButton?.SetValue(Button.ContentProperty, _resourceManager.GetString("SelectProjectFolderButton_Content") ?? "Choose folder");
+            NefImportSectionTitleText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("NefImportSectionTitle") ?? "NEF import");
+            RawSourceLabelText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("RawSourceLabel") ?? "RAW source");
+            StartFrameLabelText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("StartFrameLabel") ?? "Start frame");
+            ProxyFormatLabelText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("ProxyFormatLabel") ?? "Proxy format");
+            ImportInstructionsText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("ImportInstructionsText") ?? "Import: PNG master in Masters/<Shot>, proxy in Proxy/<Shot>");
+            SelectRawSourceFolderButton?.SetValue(Button.ContentProperty, _resourceManager.GetString("SelectRawSourceFolderButton_Content") ?? "Choose NEF folder");
+            CameraIntegrationTitleText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("CameraIntegrationTitle") ?? "📷 Camera integration");
+            StreamDeckSectionTitleText?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("StreamDeckSectionTitle") ?? "🎛 Stream Deck");
+            ConnectStreamDeckButton?.SetValue(Button.ContentProperty, _resourceManager.GetString("ConnectStreamDeckButton_Content") ?? "Connect");
         }
 
         private async Task RefreshCameraListAsync()
@@ -166,7 +296,7 @@ namespace OpenStopMotionStudio.GUI
 
             _isRefreshingCameraList = true;
             CameraComboBox.Items.Clear();
-            CameraComboBox.Items.Add("Kameras werden gesucht...");
+            CameraComboBox.Items.Add(_resourceManager.GetString("CameraSearchMessage") ?? "Searching for cameras...");
             CameraComboBox.SelectedIndex = 0;
             CameraComboBox.IsEnabled = false;
             StartCameraButton.IsEnabled = false;
@@ -180,7 +310,7 @@ namespace OpenStopMotionStudio.GUI
 
                 if (_cameraDevices.Count == 0)
                 {
-                    CameraComboBox.Items.Add(_resourceManager.GetString("NoCameraFound") ?? "Keine Kamera gefunden");
+                    CameraComboBox.Items.Add(_resourceManager.GetString("NoCameraFound") ?? "No camera found");
                     CameraComboBox.SelectedIndex = 0;
                     CameraComboBox.IsEnabled = false;
                     StartCameraButton.IsEnabled = false;
@@ -199,7 +329,7 @@ namespace OpenStopMotionStudio.GUI
             {
                 DebugLogger.Instance.LogError("CameraRefresh", $"Error refreshing camera list: {ex.Message}");
                 CameraComboBox.Items.Clear();
-                CameraComboBox.Items.Add("Fehler beim Laden der Kameras");
+                CameraComboBox.Items.Add(_resourceManager.GetString("CameraLoadErrorMessage") ?? "Error loading cameras");
                 CameraComboBox.SelectedIndex = 0;
                 CameraComboBox.IsEnabled = false;
                 StartCameraButton.IsEnabled = false;
@@ -209,6 +339,14 @@ namespace OpenStopMotionStudio.GUI
             {
                 _isRefreshingCameraList = false;
             }
+        }
+
+        private void LanguageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!_uiReady)
+                return;
+
+            ApplyLanguageSelection();
         }
 
         private void CameraComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -251,20 +389,20 @@ namespace OpenStopMotionStudio.GUI
                 
                 if (cameraIndex < 0)
                 {
-                    ResolutionComboBox.Items.Add("Keine Kamera ausgewählt");
+                    ResolutionComboBox.Items.Add(_resourceManager.GetString("NoCameraSelected") ?? "No camera selected");
                     ResolutionComboBox.SelectedIndex = 0;
                     ResolutionComboBox.IsEnabled = false;
-                    ResolutionHintText.Text = "Keine Kamera ausgewählt.";
+                    ResolutionHintText.Text = _resourceManager.GetString("NoCameraSelectedHint") ?? "No camera selected.";
                     return;
                 }
 
                 CameraDeviceDescriptor? descriptor = GetSelectedCameraDescriptor();
                 if (IsSdkBackedCamera(descriptor))
                 {
-                    ResolutionComboBox.Items.Add("SDK-Live-View: native Kamera-Auflösung");
+                    ResolutionComboBox.Items.Add(_resourceManager.GetString("SdkResolutionMessage") ?? "SDK live view: native camera resolution");
                     ResolutionComboBox.SelectedIndex = 0;
                     ResolutionComboBox.IsEnabled = false;
-                    ResolutionHintText.Text = "Bei SDK-Kameras wird die native Kamera-Auflösung verwendet. Die manuelle Auswahl ist hier deaktiviert.";
+                    ResolutionHintText.Text = _resourceManager.GetString("SdkResolutionHint") ?? "For SDK cameras, the native camera resolution is used. Manual selection is disabled here.";
                     return;
                 }
 
@@ -276,10 +414,10 @@ namespace OpenStopMotionStudio.GUI
                 if (resolutions == null || resolutions.Count == 0)
                 {
                     DebugLogger.Instance.LogInfo("Resolution", "No resolutions available");
-                    ResolutionComboBox.Items.Add("Keine Auflösungen verfügbar");
+                    ResolutionComboBox.Items.Add(_resourceManager.GetString("NoResolutionsAvailable") ?? "No resolutions available");
                     ResolutionComboBox.SelectedIndex = 0;
                     ResolutionComboBox.IsEnabled = false;
-                    ResolutionHintText.Text = "Für diese Kamera wurden keine manuellen Auflösungen gefunden.";
+                    ResolutionHintText.Text = _resourceManager.GetString("NoResolutionsAvailableHint") ?? "No manual resolutions were found for this camera.";
                     return;
                 }
 
@@ -297,16 +435,16 @@ namespace OpenStopMotionStudio.GUI
 
                 int preferredIndex = resolutions.FindIndex(r => r.Equals(preferredResolution));
                 ResolutionComboBox.SelectedIndex = preferredIndex >= 0 ? preferredIndex : 0;
-                ResolutionHintText.Text = "Auflösung vor dem Start wählen.";
-                SetStatus($"Auflösungen geladen: {resolutions.Count} verfügbar");
+                ResolutionHintText.Text = _resourceManager.GetString("ResolutionBeforeStart") ?? "Choose a resolution before starting.";
+                SetStatus(string.Format(_resourceManager.GetString("ResolutionLoadedMessage") ?? "Loaded {0} resolutions.", resolutions.Count));
             }
             catch (Exception ex)
             {
                 DebugLogger.Instance.LogInfo("ResolutionLoad", $"Error loading resolutions: {ex.Message}");
-                ResolutionComboBox.Items.Add("Fehler beim Laden");
+                ResolutionComboBox.Items.Add(_resourceManager.GetString("ResolutionLoadError") ?? "Error loading resolutions");
                 ResolutionComboBox.SelectedIndex = 0;
                 ResolutionComboBox.IsEnabled = false;
-                ResolutionHintText.Text = "Auflösungen konnten nicht geladen werden.";
+                ResolutionHintText.Text = _resourceManager.GetString("ResolutionLoadErrorHint") ?? "The resolutions could not be loaded.";
             }
         }
 
@@ -318,7 +456,7 @@ namespace OpenStopMotionStudio.GUI
             if (ResolutionComboBox.SelectedItem is CameraResolution resolution)
             {
                 _camera.SetRequestedResolution(resolution.Width, resolution.Height);
-                SetStatus($"Auflösung ausgewählt: {resolution}");
+                SetStatus(string.Format(_resourceManager.GetString("ResolutionSelectedMessage") ?? "Resolution selected: {0}", resolution));
                 DebugLogger.Instance.LogInfo("Resolution", $"Selected resolution: {resolution.Width}x{resolution.Height}");
             }
         }
@@ -376,7 +514,7 @@ namespace OpenStopMotionStudio.GUI
             catch (Exception ex)
             {
                 DebugLogger.Instance.LogError("StartCameraButton_Click", $"Error starting camera: {ex.Message}");
-                await MessageBox.Show(this, _resourceManager.GetString("Error_Title") ?? "Fehler", $"Kamera konnte nicht gestartet werden: {ex.Message}");
+                await MessageBox.Show(this, _resourceManager.GetString("Error_Title") ?? "Fehler", string.Format(_resourceManager.GetString("CameraCouldNotBeStartedWithReason_Message") ?? "The camera could not be started: {0}", ex.Message));
             }
         }
 
@@ -530,16 +668,16 @@ namespace OpenStopMotionStudio.GUI
             if (IsSdkStillCaptureActive())
             {
                 if (_camera.TriggerHardwareCapture())
-                    SetStatus("Hardware-Ausloeser ausgelöst. Warte auf das Kamerabild...");
+                    SetStatus(_resourceManager.GetString("HardwareTrigger_Success") ?? "Hardware trigger fired. Waiting for the camera image...");
                 else
-                    SetStatus("Hardware-Ausloesen fehlgeschlagen.");
+                    SetStatus(_resourceManager.GetString("HardwareTrigger_Failed") ?? "Hardware trigger failed.");
                 return;
             }
 
             var currentFrame = _camera.GetCurrentFrame();
             if (currentFrame == null)
             {
-                SetStatus("⚠ Kein Frame verfügbar.");
+                SetStatus(_resourceManager.GetString("NoFrameAvailableMessage") ?? "⚠ No frame available.");
                 return;
             }
 
@@ -553,8 +691,8 @@ namespace OpenStopMotionStudio.GUI
             RefreshTimelineState();
             EnsureTimelineCursorVisible();
 
-            PlaybackStatusText.Text = $"Capture-Keyframe: Frame {capturedFrame.Index} gespeichert";
-            SetStatus($"✔ Frame {capturedFrame.Index} gespeichert: {System.IO.Path.GetFileName(capturedFrame.MasterPath)}");
+            PlaybackStatusText.Text = string.Format(_resourceManager.GetString("CaptureKeyframeSavedMessage") ?? "Capture keyframe: Frame {0} saved", capturedFrame.Index);
+            SetStatus(string.Format(_resourceManager.GetString("FrameSavedMessage") ?? "✔ Frame {0} saved: {1}", capturedFrame.Index, System.IO.Path.GetFileName(capturedFrame.MasterPath)));
         }
 
         private void OnCameraImageCaptured(string filePath)
@@ -574,13 +712,13 @@ namespace OpenStopMotionStudio.GUI
                     RefreshTimelineState();
                     EnsureTimelineCursorVisible();
 
-                    PlaybackStatusText.Text = $"Capture-Keyframe: Frame {capturedFrame.Index} importiert";
-                    SetStatus($"✔ DSLR-Frame {capturedFrame.Index} importiert: {System.IO.Path.GetFileName(capturedFrame.MasterPath)}");
+                    PlaybackStatusText.Text = string.Format(_resourceManager.GetString("CaptureKeyframeImportedMessage") ?? "Capture keyframe: Frame {0} imported", capturedFrame.Index);
+                    SetStatus(string.Format(_resourceManager.GetString("DslrFrameImportedMessage") ?? "✔ DSLR frame {0} imported: {1}", capturedFrame.Index, System.IO.Path.GetFileName(capturedFrame.MasterPath)));
                 }
                 catch (Exception ex)
                 {
                     DebugLogger.Instance.LogError("OnCameraImageCaptured", $"Error importing hardware capture: {ex.Message}");
-                    SetStatus($"Hardware-Capture konnte nicht importiert werden: {ex.Message}");
+                    SetStatus(string.Format(_resourceManager.GetString("HardwareCaptureImportFailedMessage") ?? "Hardware capture could not be imported: {0}", ex.Message));
                 }
             });
         }
@@ -589,7 +727,7 @@ namespace OpenStopMotionStudio.GUI
         {
             if (!_capture.UndoLastCapture())
             {
-                SetStatus("Kein Frame zum Rückgängig machen.");
+                SetStatus(_resourceManager.GetString("UndoNoFramesMessage") ?? "No frame to undo.");
                 return;
             }
 
@@ -607,8 +745,8 @@ namespace OpenStopMotionStudio.GUI
             EnsureTimelineCursorVisible();
 
             SetStatus(_capture.FrameCount > 0
-                ? $"Letztes Frame entfernt. Aktuell: {_capture.LastFrameNumber}"
-                : "Letztes Frame entfernt. Keine Frames mehr vorhanden.");
+                ? string.Format(_resourceManager.GetString("UndoRemovedFrameMessage") ?? "Last frame removed. Current: {0}", _capture.LastFrameNumber)
+                : _resourceManager.GetString("UndoRemovedLastFrameMessage") ?? "Last frame removed. No frames left.");
         }
 
         private void OnionSkinToggle_IsCheckedChanged(object sender, RoutedEventArgs e)
@@ -616,13 +754,13 @@ namespace OpenStopMotionStudio.GUI
             if (OnionSkinToggle.IsChecked == true)
             {
                 _overlay.IsEnabled = true;
-                OnionSkinToggle.Content = "Onion Skin: AN ✓";
+                OnionSkinToggle.Content = _resourceManager.GetString("OnionSkinToggle_On") ?? "Onion Skin: ON ✓";
                 RefreshOnionSkinPreview();
             }
             else
             {
                 _overlay.IsEnabled = false;
-                OnionSkinToggle.Content = "Onion Skin: AUS";
+                OnionSkinToggle.Content = _resourceManager.GetString("OnionSkinToggle_Off") ?? "Onion Skin: OFF";
                 ClearOnionSkinLayers();
             }
         }
@@ -646,8 +784,8 @@ namespace OpenStopMotionStudio.GUI
             _overlay.ColorCodedMode = OnionColorCodedToggle.IsChecked == true;
             RefreshOnionSkinPreview();
             SetStatus(_overlay.ColorCodedMode
-                ? "Onion Skin Farbcodierung: AN"
-                : "Onion Skin Farbcodierung: AUS");
+                ? _resourceManager.GetString("OnionSkinColorCode_On") ?? "Onion Skin color coding: ON"
+                : _resourceManager.GetString("OnionSkinColorCode_Off") ?? "Onion Skin color coding: OFF");
         }
 
         private void LoopPlaybackToggle_IsCheckedChanged(object? sender, RoutedEventArgs e)
@@ -655,8 +793,8 @@ namespace OpenStopMotionStudio.GUI
             _overlay.ShowLoopPlaybackOverlay = LoopPlaybackToggle.IsChecked == true;
             RefreshLoopPlaybackOverlay();
             SetStatus(_overlay.ShowLoopPlaybackOverlay
-                ? "Loop-Vergleich: AN"
-                : "Loop-Vergleich: AUS");
+                ? _resourceManager.GetString("LoopPlayback_On") ?? "Loop comparison: ON"
+                : _resourceManager.GetString("LoopPlayback_Off") ?? "Loop comparison: OFF");
         }
 
         private void AlphaSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
@@ -666,7 +804,7 @@ namespace OpenStopMotionStudio.GUI
 
             double alpha = e.NewValue / 100.0;
             _overlay.AlphaValue = alpha;
-            AlphaLabel.Text = $"Onion-Transparenz: {(int)e.NewValue}%";
+            AlphaLabel.Text = string.Format(_resourceManager.GetString("AlphaLabel_Format") ?? "Onion transparency: {0}%", (int)e.NewValue);
             RefreshOnionSkinPreview();
         }
 
@@ -677,7 +815,7 @@ namespace OpenStopMotionStudio.GUI
 
             double alpha = e.NewValue / 100.0;
             _overlay.ReferenceAlphaValue = alpha;
-            ReferenceAlphaLabel.Text = $"Referenz-Transparenz: {(int)e.NewValue}%";
+            ReferenceAlphaLabel.Text = string.Format(_resourceManager.GetString("ReferenceAlphaLabel_Format") ?? "Reference transparency: {0}%", (int)e.NewValue);
             RefreshReferenceOverlayPreview();
         }
 
@@ -688,7 +826,7 @@ namespace OpenStopMotionStudio.GUI
 
             double alpha = e.NewValue / 100.0;
             _overlay.LoopPlaybackAlphaValue = alpha;
-            LoopOverlayAlphaLabel.Text = $"Loop-Overlay: {(int)e.NewValue}%";
+            LoopOverlayAlphaLabel.Text = string.Format(_resourceManager.GetString("LoopOverlayAlphaLabel_Format") ?? "Loop overlay: {0}%", (int)e.NewValue);
             RefreshLoopPlaybackOverlay();
         }
 
@@ -710,7 +848,7 @@ namespace OpenStopMotionStudio.GUI
 
             _overlay.ShowGrid = GridToggle.IsChecked == true;
             RefreshOverlayCanvas();
-            SetStatus($"Grid Overlay: {(_overlay.ShowGrid ? "AN ✓" : "AUS")}");
+            SetStatus(string.Format(_resourceManager.GetString("GridOverlayStatus_Format") ?? "Grid overlay: {0}", _overlay.ShowGrid ? _resourceManager.GetString("ToggleOnLabel") ?? "ON ✓" : _resourceManager.GetString("ToggleOffLabel") ?? "OFF"));
         }
 
         private void ActionSafeToggle_IsCheckedChanged(object sender, RoutedEventArgs e)
@@ -720,7 +858,7 @@ namespace OpenStopMotionStudio.GUI
 
             _overlay.ShowActionSafe = ActionSafeToggle.IsChecked == true;
             RefreshOverlayCanvas();
-            SetStatus($"Action Safe Zone: {(_overlay.ShowActionSafe ? "AN ✓" : "AUS")}");
+            SetStatus(string.Format(_resourceManager.GetString("ActionSafeZoneStatus_Format") ?? "Action safe zone: {0}", _overlay.ShowActionSafe ? _resourceManager.GetString("ToggleOnLabel") ?? "ON ✓" : _resourceManager.GetString("ToggleOffLabel") ?? "OFF"));
         }
 
         private void TitleSafeToggle_IsCheckedChanged(object sender, RoutedEventArgs e)
@@ -730,7 +868,7 @@ namespace OpenStopMotionStudio.GUI
 
             _overlay.ShowTitleSafe = TitleSafeToggle.IsChecked == true;
             RefreshOverlayCanvas();
-            SetStatus($"Title Safe Zone: {(_overlay.ShowTitleSafe ? "AN ✓" : "AUS")}");
+            SetStatus(string.Format(_resourceManager.GetString("TitleSafeZoneStatus_Format") ?? "Title safe zone: {0}", _overlay.ShowTitleSafe ? _resourceManager.GetString("ToggleOnLabel") ?? "ON ✓" : _resourceManager.GetString("ToggleOffLabel") ?? "OFF"));
         }
 
         private void RefreshOnionSkinPreview()
@@ -983,7 +1121,7 @@ namespace OpenStopMotionStudio.GUI
             {
                 IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
                 {
-                    Title = "Overlay Video/Bild wählen",
+                    Title = _resourceManager.GetString("OverlayPicker_Title") ?? "Choose overlay video/image",
                     AllowMultiple = false,
                     FileTypeFilter = new[]
                     {
@@ -1006,17 +1144,17 @@ namespace OpenStopMotionStudio.GUI
                 else if (ReferenceOverlayProvider.IsSupportedImageFile(filePath))
                     _referenceOverlay.LoadSingleImage(filePath);
                 else
-                    throw new InvalidOperationException("Dateityp für Overlay wird nicht unterstützt.");
+                    throw new InvalidOperationException(_resourceManager.GetString("OverlayUnsupportedFileType") ?? "The file type is not supported for overlays.");
 
                 ReferenceOverlayInfoText.Text = _referenceOverlay.SourceLabel;
                 ReferenceOverlayToggle.IsChecked = true;
                 RefreshReferenceOverlayPreview();
-                SetStatus($"Referenz geladen: {_referenceOverlay.SourceLabel}");
+                SetStatus(string.Format(_resourceManager.GetString("ReferenceOverlay_LoadedMessage") ?? "Reference loaded: {0}", _referenceOverlay.SourceLabel));
             }
             catch (Exception ex)
             {
                 DebugLogger.Instance.LogError("ReferenceOverlay", $"Load file failed: {ex.Message}");
-                await MessageBox.Show(this, "Referenz-Overlay", $"Overlay konnte nicht geladen werden:\n{ex.Message}");
+                await MessageBox.Show(this, _resourceManager.GetString("ReferenceOverlay_Title") ?? "Reference overlay", string.Format(_resourceManager.GetString("ReferenceOverlay_LoadFailedMessage") ?? "Overlay could not be loaded:\n{0}", ex.Message));
             }
         }
 
@@ -1024,7 +1162,7 @@ namespace OpenStopMotionStudio.GUI
         {
             try
             {
-                string? folder = await BrowseForFolder("Overlay-Bildsequenz wählen");
+                string? folder = await BrowseForFolder(_resourceManager.GetString("ReferenceOverlay_SelectSequenceTitle") ?? "Choose overlay image sequence");
                 if (string.IsNullOrWhiteSpace(folder))
                     return;
 
@@ -1032,12 +1170,12 @@ namespace OpenStopMotionStudio.GUI
                 ReferenceOverlayInfoText.Text = _referenceOverlay.SourceLabel;
                 ReferenceOverlayToggle.IsChecked = true;
                 RefreshReferenceOverlayPreview();
-                SetStatus($"Referenz geladen: {_referenceOverlay.SourceLabel}");
+                SetStatus(string.Format(_resourceManager.GetString("ReferenceOverlay_LoadedMessage") ?? "Reference loaded: {0}", _referenceOverlay.SourceLabel));
             }
             catch (Exception ex)
             {
                 DebugLogger.Instance.LogError("ReferenceOverlay", $"Load sequence failed: {ex.Message}");
-                await MessageBox.Show(this, "Referenz-Overlay", $"Bildsequenz konnte nicht geladen werden:\n{ex.Message}");
+                await MessageBox.Show(this, _resourceManager.GetString("ReferenceOverlay_Title") ?? "Reference overlay", string.Format(_resourceManager.GetString("ReferenceOverlay_SequenceLoadFailedMessage") ?? "Image sequence could not be loaded:\n{0}", ex.Message));
             }
         }
 
@@ -1048,7 +1186,7 @@ namespace OpenStopMotionStudio.GUI
             ReferenceOverlayToggle.IsChecked = false;
             ReferenceOverlayImage.Source = null;
             ReferenceOverlayImage.IsVisible = false;
-            SetStatus("Referenz-Overlay entfernt.");
+            SetStatus(_resourceManager.GetString("ReferenceOverlay_RemovedMessage") ?? "Reference overlay removed.");
         }
 
         private void ReferencePlaybackModeButton_Click(object? sender, RoutedEventArgs e)
@@ -1061,8 +1199,8 @@ namespace OpenStopMotionStudio.GUI
             RefreshReferenceOverlayPreview();
 
             SetStatus(_referenceOverlay.PlaybackMode == ReferenceOverlayPlaybackMode.Loop
-                ? "Referenz-Modus: Loop aktiv."
-                : "Referenz-Modus: Stoppt am letzten Frame.");
+                ? _resourceManager.GetString("ReferencePlaybackMode_Loop") ?? "Reference mode: loop active."
+                : _resourceManager.GetString("ReferencePlaybackMode_StopAtEnd") ?? "Reference mode: stops on the last frame.");
         }
 
         private void UpdateReferencePlaybackModeButton()
@@ -1071,7 +1209,7 @@ namespace OpenStopMotionStudio.GUI
             _referenceHoldIcon ??= LoadReferencePlaybackIcon("reference_mode_hold");
 
             bool isLoop = _referenceOverlay.PlaybackMode == ReferenceOverlayPlaybackMode.Loop;
-            ReferencePlaybackModeText.Text = isLoop ? "Modus: Loop" : "Modus: Bis Ende";
+            ReferencePlaybackModeText.Text = isLoop ? _resourceManager.GetString("ReferencePlaybackMode_LabelLoop") ?? "Mode: Loop" : _resourceManager.GetString("ReferencePlaybackMode_LabelEnd") ?? "Mode: Until end";
             ReferencePlaybackModeIcon.Source = isLoop ? _referenceLoopIcon : _referenceHoldIcon;
         }
 
@@ -1114,7 +1252,7 @@ namespace OpenStopMotionStudio.GUI
         private void ReferenceOverlayToggle_IsCheckedChanged(object? sender, RoutedEventArgs e)
         {
             bool isEnabled = ReferenceOverlayToggle.IsChecked == true;
-            ReferenceOverlayToggle.Content = isEnabled ? "Referenz-Overlay: AN ✓" : "Referenz-Overlay: AUS";
+            ReferenceOverlayToggle.Content = isEnabled ? _resourceManager.GetString("ReferenceOverlayToggle_On") ?? "Reference overlay: ON ✓" : _resourceManager.GetString("ReferenceOverlayToggle_Off") ?? "Reference overlay: OFF";
 
             if (isEnabled)
                 RefreshReferenceOverlayPreview();
@@ -1135,7 +1273,7 @@ namespace OpenStopMotionStudio.GUI
                 ? Math.Max(_playbackIndex - 1, 0)
                 : GetNearestCaptureIndexAtOrBefore(_timelineCursorFrame - 1);
             ShowFrameAtPlaybackIndex(targetIndex);
-            SetStatus($"Zum vorherigen Keyframe: Frame {_timelineCursorFrame}");
+            SetStatus(string.Format(_resourceManager.GetString("PreviousKeyframeMessage") ?? "Go to previous keyframe: Frame {0}", _timelineCursorFrame));
         }
 
         private void NextFrame_Click(object sender, RoutedEventArgs e)
@@ -1148,7 +1286,7 @@ namespace OpenStopMotionStudio.GUI
                 ? Math.Min(_playbackIndex + 1, _capture.Frames.Count - 1)
                 : GetNearestCaptureIndexAtOrAfter(_timelineCursorFrame + 1);
             ShowFrameAtPlaybackIndex(targetIndex);
-            SetStatus($"Zum nächsten Keyframe: Frame {_timelineCursorFrame}");
+            SetStatus(string.Format(_resourceManager.GetString("NextKeyframeMessage") ?? "Go to next keyframe: Frame {0}", _timelineCursorFrame));
         }
 
         private void PlayPause_Click(object sender, RoutedEventArgs e)
@@ -1160,7 +1298,7 @@ namespace OpenStopMotionStudio.GUI
             {
                 StopPlaybackInternal();
                 RefreshTimelineState();
-                SetStatus("Playback pausiert.");
+                SetStatus(_resourceManager.GetString("PlaybackPausedMessage") ?? "Playback paused.");
                 return;
             }
 
@@ -1169,9 +1307,9 @@ namespace OpenStopMotionStudio.GUI
 
             ShowFrameAtPlaybackIndex(_playbackIndex);
             _playbackTimer.Start();
-            PlayPauseButton.Content = "⏸ Pause";
+            PlayPauseButton.Content = _resourceManager.GetString("PauseButton_Content") ?? "⏸ Pause";
             RefreshTimelineState();
-            SetStatus($"Playback gestartet mit {_playbackFps} fps.");
+            SetStatus(string.Format(_resourceManager.GetString("PlaybackStartedMessage") ?? "Playback started at {0} fps.", _playbackFps));
         }
 
         private void PlaybackTimer_Tick(object? sender, EventArgs e)
@@ -1220,7 +1358,7 @@ namespace OpenStopMotionStudio.GUI
             if (_playbackTimer.IsEnabled)
                 _playbackTimer.Stop();
 
-            PlayPauseButton.Content = "▶ Abspielen";
+            PlayPauseButton.Content = _resourceManager.GetString("PlayPauseButton_Content_Play") ?? "▶ Play";
         }
 
         private async void ConnectStreamDeck_Click(object sender, RoutedEventArgs e)
@@ -1231,21 +1369,21 @@ namespace OpenStopMotionStudio.GUI
 
                 if (connected)
                 {
-                    StreamDeckStatusText.Text = "● Verbunden";
+                    StreamDeckStatusText.Text = _resourceManager.GetString("StreamDeck_Status_Connected") ?? "● Connected";
                     StreamDeckStatusText.Foreground = SolidColorBrush.Parse("#4CAF50");
-                    SetStatus("Stream Deck verbunden und bereit.");
+                    SetStatus(_resourceManager.GetString("StreamDeck_ConnectedMessage") ?? "Stream Deck connected and ready.");
                 }
                 else
                 {
-                    StreamDeckStatusText.Text = "● Nicht gefunden";
-                    await MessageBox.Show(this, "Stream Deck", "Kein Stream Deck gefunden.\nBitte Gerät anschließen und erneut versuchen.");
+                    StreamDeckStatusText.Text = _resourceManager.GetString("StreamDeck_Status_NotFound") ?? "● Not found";
+                    await MessageBox.Show(this, _resourceManager.GetString("StreamDeck_Title") ?? "Stream Deck", _resourceManager.GetString("StreamDeck_NotFoundMessage") ?? "No Stream Deck found.\nPlease connect the device and try again.");
                 }
             }
             catch (Exception ex)
             {
                 DebugLogger.Instance.LogError("ConnectStreamDeck_Click", $"Error connecting to Stream Deck: {ex.Message}");
-                StreamDeckStatusText.Text = "● Fehler";
-                await MessageBox.Show(this, "Stream Deck", $"Fehler bei der Verbindung zum Stream Deck: {ex.Message}");
+                StreamDeckStatusText.Text = _resourceManager.GetString("StreamDeck_Status_Error") ?? "● Error";
+                await MessageBox.Show(this, _resourceManager.GetString("StreamDeck_Title") ?? "Stream Deck", string.Format(_resourceManager.GetString("StreamDeck_ConnectionErrorMessage") ?? "Error connecting to the Stream Deck: {0}", ex.Message));
             }
         }
 
@@ -1253,19 +1391,19 @@ namespace OpenStopMotionStudio.GUI
         {
             try
             {
-                string? folder = await BrowseForFolder("Projektordner auswählen");
+                string? folder = await BrowseForFolder(_resourceManager.GetString("SelectProjectFolder_Title") ?? "Select project folder");
                 if (string.IsNullOrWhiteSpace(folder))
                     return;
 
                 _capture.SetOutputFolder(folder);
                 ProjectFolderText.Text = folder;
                 UpdateShotPreview();
-                SetStatus($"Projektordner: {folder}");
+                SetStatus(string.Format(_resourceManager.GetString("ProjectFolderStatus_Format") ?? "Project folder: {0}", folder));
             }
             catch (Exception ex)
             {
                 DebugLogger.Instance.LogError("SelectFolder_Click", $"Error selecting folder: {ex.Message}");
-                await MessageBox.Show(this, "Fehler", $"Fehler bei der Ordnerauswahl: {ex.Message}");
+                await MessageBox.Show(this, _resourceManager.GetString("Error_Title") ?? "Error", string.Format(_resourceManager.GetString("FolderSelectionErrorMessage") ?? "Error selecting folder: {0}", ex.Message));
             }
         }
 
@@ -1289,8 +1427,8 @@ namespace OpenStopMotionStudio.GUI
             UpdateShotPreview();
             RefreshOverlayCanvas();
             SetStatus(mode == CaptureOutputMode.PngWithProxy
-                ? "Capture-Format: PNG-Master + JPEG-Proxies"
-                : "Capture-Format: JPEG-Master");
+                ? _resourceManager.GetString("CaptureFormat_PngWithProxy") ?? "Capture format: PNG master + JPEG proxies"
+                : _resourceManager.GetString("CaptureFormat_JpegMaster") ?? "Capture format: JPEG master");
         }
 
         private void ApplyShotName_Click(object sender, RoutedEventArgs e) => BeginShot();
@@ -1319,7 +1457,7 @@ namespace OpenStopMotionStudio.GUI
             RefreshReferenceOverlayPreview();
             UpdateShotPreview();
             RefreshTimelineState();
-            SetStatus($"Shot aktiv: {shotName}");
+            SetStatus(string.Format(_resourceManager.GetString("ShotActiveMessage_Format") ?? "Shot active: {0}", shotName));
         }
 
         private void UpdateShotPreview()
@@ -1364,34 +1502,34 @@ namespace OpenStopMotionStudio.GUI
 
             if (descriptor is null)
             {
-                CameraBackendStatusText.Text = "Backend: keine Kamera ausgewählt";
-                CameraCaptureModeText.Text = "Capture-Modus: nicht aktiv";
-                CameraSdkStatusText.Text = "SDK-Status: keine Kamera ausgewählt";
+                CameraBackendStatusText.Text = _resourceManager.GetString("CameraStatus_NoCameraSelected_Backend") ?? "Backend: no camera selected";
+                CameraCaptureModeText.Text = _resourceManager.GetString("CameraStatus_NoCameraSelected_Mode") ?? "Capture mode: inactive";
+                CameraSdkStatusText.Text = _resourceManager.GetString("CameraStatus_NoCameraSelected_Sdk") ?? "SDK status: no camera selected";
                 return;
             }
 
-            CameraBackendStatusText.Text = $"Backend: {DescribeConnectionKind(backendKind)}";
+            CameraBackendStatusText.Text = string.Format(_resourceManager.GetString("CameraStatus_BackendFormat") ?? "Backend: {0}", DescribeConnectionKind(backendKind));
 
             if (_camera.IsRunning)
             {
                 CameraCaptureModeText.Text = _camera.UsesHardwareStillCapture
-                    ? "Capture-Modus: DSLR-Still-Capture über Hersteller-SDK"
-                    : "Capture-Modus: Live-Frame-Capture über Video-Backend";
+                    ? _resourceManager.GetString("CameraStatus_CaptureMode_Dslr") ?? "Capture mode: DSLR still capture via manufacturer SDK"
+                    : _resourceManager.GetString("CameraStatus_CaptureMode_Live") ?? "Capture mode: live frame capture via video backend";
             }
             else
             {
                 CameraCaptureModeText.Text = IsSdkBackedCamera(descriptor)
-                    ? "Capture-Modus: SDK-Kamera ausgewählt, Verbindung noch nicht gestartet"
-                    : "Capture-Modus: generische Videoquelle ausgewählt";
+                    ? _resourceManager.GetString("CameraStatus_CaptureMode_SdkSelected") ?? "Capture mode: SDK camera selected, connection not started yet"
+                    : _resourceManager.GetString("CameraStatus_CaptureMode_GenericVideo") ?? "Capture mode: generic video source selected";
             }
 
             string baseStatus = IsSdkBackedCamera(descriptor)
-                ? $"SDK-Status: {descriptor.AdapterName} für {descriptor.Name} erkannt"
-                : $"SDK-Status: {descriptor.Name} nutzt kein Hersteller-SDK";
+                ? string.Format(_resourceManager.GetString("CameraStatus_SdkDetectedFormat") ?? "SDK status: {0} for {1} detected", descriptor.AdapterName, descriptor.Name)
+                : string.Format(_resourceManager.GetString("CameraStatus_SdkNotUsedFormat") ?? "SDK status: {0} uses no manufacturer SDK", descriptor.Name);
 
             CameraSdkStatusText.Text = string.IsNullOrWhiteSpace(statusOverride)
                 ? baseStatus
-                : $"{baseStatus}\nLetzter Status: {statusOverride}";
+                : string.Format(_resourceManager.GetString("CameraStatus_LastStatusFormat") ?? "{0}\nLast status: {1}", baseStatus, statusOverride);
         }
 
         private void OnCameraStatusChanged(string message)
@@ -1407,8 +1545,13 @@ namespace OpenStopMotionStudio.GUI
         private void UpdateFrameCounterText()
         {
             FrameCounterText.Text = _capture.FrameCount == 0
-                ? "Frame: 0"
-                : $"Frame: {_capture.LastFrameNumber}";
+                ? _resourceManager.GetString("FrameCounterText_Zero") ?? "Frame: 0"
+                : string.Format(_resourceManager.GetString("FrameCounterText_Value") ?? "Frame: {0}", _capture.LastFrameNumber);
+        }
+
+        private void UpdatePlaybackSpeedLabel()
+        {
+            PlaybackSpeedLabel.Text = string.Format(_resourceManager.GetString("PlaybackSpeedLabel_Format") ?? "Playback: {0} fps", _playbackFps);
         }
 
         private async Task<string?> BrowseForFolder(string title)
@@ -1456,7 +1599,7 @@ namespace OpenStopMotionStudio.GUI
         {
             try
             {
-                SetStatus($"Lade Projekt: {projectPath}...");
+                SetStatus(string.Format(_resourceManager.GetString("ProjectLoadingMessage") ?? "Loading project: {0}...", projectPath));
                 
                 var (migration, loadSummary) = await Task.Run(() =>
                 {
@@ -1483,9 +1626,9 @@ namespace OpenStopMotionStudio.GUI
                         ShowFrameAtPlaybackIndex(loadSummary.LoadedFrameCount - 1);
 
                         string migrationText = migration.HasChanges
-                            ? $" | Migration: {migration.MovedFiles} Dateien"
+                            ? string.Format(_resourceManager.GetString("ProjectLoadedMigrationText") ?? " | Migration: {0} files", migration.MovedFiles)
                             : string.Empty;
-                        SetStatus($"Projekt geladen: {projectPath} | Shot {loadSummary.ShotName} mit {loadSummary.LoadedFrameCount} Frames{migrationText}");
+                        SetStatus(string.Format(_resourceManager.GetString("ProjectLoadedMessage") ?? "Project loaded: {0} | Shot {1} with {2} frames{3}", projectPath, loadSummary.ShotName, loadSummary.LoadedFrameCount, migrationText));
                     }
                     else
                     {
@@ -1493,11 +1636,11 @@ namespace OpenStopMotionStudio.GUI
                         RefreshTimelineState();
                         if (migration.HasChanges)
                         {
-                            SetStatus($"Projekt geladen: {projectPath} | Migration abgeschlossen: {migration.MovedFiles} Dateien verschoben");
+                            SetStatus(string.Format(_resourceManager.GetString("ProjectLoadedMigrationCompletedMessage") ?? "Project loaded: {0} | Migration completed: {1} files moved", projectPath, migration.MovedFiles));
                         }
                         else
                         {
-                            SetStatus($"Projekt geladen: {projectPath}");
+                            SetStatus(string.Format(_resourceManager.GetString("ProjectLoadedSimpleMessage") ?? "Project loaded: {0}", projectPath));
                         }
                     }
                 });
@@ -1507,7 +1650,7 @@ namespace OpenStopMotionStudio.GUI
                 DebugLogger.Instance.LogError("ProjectLoad", $"Failed to load project '{projectPath}'. Reason: {ex.Message}");
                 await Dispatcher.UIThread.InvokeAsync(async () =>
                 {
-                    await MessageBox.Show(this, "Fehler beim Laden des Projekts", $"Das Projekt '{Path.GetFileName(projectPath)}' konnte nicht geladen werden.\n\nUrsache: {ex.Message}");
+                    await MessageBox.Show(this, _resourceManager.GetString("ProjectLoadError_Title") ?? "Error loading project", string.Format(_resourceManager.GetString("ProjectLoadError_Message") ?? "The project '{0}' could not be loaded.\n\nReason: {1}", Path.GetFileName(projectPath), ex.Message));
                     
                     if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
                     {
