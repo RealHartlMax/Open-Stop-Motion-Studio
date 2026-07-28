@@ -11,6 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: write
 
 concurrency:
@@ -151,6 +152,7 @@ jobs:
 
       - name: Create and push tag
         if: steps.version.outputs.should_tag == 'true'
+        id: tag
         shell: bash
         env:
           TAG_NAME: ${{ steps.version.outputs.next_tag }}
@@ -161,6 +163,7 @@ jobs:
           git fetch --tags origin
           if git ls-remote --tags --exit-code origin "refs/tags/$TAG_NAME" >/dev/null 2>&1; then
             echo "Tag $TAG_NAME already exists on origin; skipping."
+            echo "tag_created=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -171,12 +174,24 @@ jobs:
           if ! git push origin "refs/tags/$TAG_NAME"; then
             if git ls-remote --tags --exit-code origin "refs/tags/$TAG_NAME" >/dev/null 2>&1; then
               echo "Tag $TAG_NAME was created by another run; treating as success."
+              echo "tag_created=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
 
             echo "Failed to push tag $TAG_NAME."
             exit 1
           fi
+
+          echo "tag_created=true" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger release workflow
+        if: steps.version.outputs.should_tag == 'true' && steps.tag.outputs.tag_created == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ steps.version.outputs.next_tag }}
+        run: |
+          set -euo pipefail
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$TAG_NAME" --field tag_name="$TAG_NAME"
 
       - name: Write summary
         shell: bash

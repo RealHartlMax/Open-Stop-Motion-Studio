@@ -294,10 +294,7 @@ jobs:
             exit 0
           fi
 
-          MESSAGE="${RELEASE_TITLE}\\nTag: ${TAG_NAME}\\nType: ${RELEASE_KIND}"
-          export MESSAGE
-          PAYLOAD=$(python3 -c 'import json, os; print(json.dumps({"content": os.environ["MESSAGE"]}))')
-          curl -sS -X POST "$WEBHOOK_URL" -H "Content-Type: application/json" -d "$PAYLOAD" >/dev/null
+          python3 -c 'import json, os, urllib.request; webhook_url=os.environ["WEBHOOK_URL"]; tag_name=os.environ["TAG_NAME"]; release_title=os.environ["RELEASE_TITLE"]; release_kind=os.environ["RELEASE_KIND"]; payload={"embeds":[{"title":release_title,"color":0x5865F2,"description":f"A new {release_kind.lower()} is available for {tag_name}.","fields":[{"name":"Tag","value":tag_name,"inline":True},{"name":"Type","value":release_kind,"inline":True}]}]}; req=urllib.request.Request(webhook_url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type":"application/json"}, method="POST"); urllib.request.urlopen(req, timeout=15)'
 
       - name: Push release link to Discord
         shell: bash
@@ -314,8 +311,5 @@ jobs:
             exit 0
           fi
 
-          RELEASE_URL="https://github.com/${REPOSITORY}/releases/tag/${TAG_NAME}"
-          MESSAGE="${RELEASE_TITLE}\\n${RELEASE_URL}"
-          export MESSAGE
-          PAYLOAD=$(python3 -c 'import json, os; print(json.dumps({"content": os.environ["MESSAGE"]}))')
-          curl -sS -X POST "$WEBHOOK_URL" -H "Content-Type: application/json" -d "$PAYLOAD" >/dev/null
+          export RELEASE_URL="https://github.com/${REPOSITORY}/releases/tag/${TAG_NAME}"
+          python3 -c 'import json, os, urllib.request; webhook_url=os.environ["WEBHOOK_URL"]; release_title=os.environ["RELEASE_TITLE"]; release_url=os.environ["RELEASE_URL"]; payload={"embeds":[{"title":release_title,"color":0x57F287,"description":f"View the release and download the binaries here: {release_url}","url":release_url}]}; req=urllib.request.Request(webhook_url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type":"application/json"}, method="POST"); urllib.request.urlopen(req, timeout=15)'

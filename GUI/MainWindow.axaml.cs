@@ -54,6 +54,7 @@ namespace OpenStopMotionStudio.GUI
         private List<CameraDeviceDescriptor> _cameraDevices = new();
         private bool _uiReady;
         private bool _isRefreshingCameraList;
+        private bool _isApplyingLanguageSelection;
         private int _playbackIndex = -1;
         
         // Track last key press time to prevent auto-repeat spam (debounce 100ms)
@@ -192,15 +193,23 @@ namespace OpenStopMotionStudio.GUI
             if (LanguageComboBox is null)
                 return;
 
-            LanguageComboBox.Items.Clear();
-            LanguageComboBox.Items.Add(_resourceManager.GetString("LanguageGerman") ?? "German");
-            LanguageComboBox.Items.Add(_resourceManager.GetString("LanguageEnglish") ?? "English");
-            LanguageComboBox.SelectedIndex = _currentCulture.TwoLetterISOLanguageName.Equals("en", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+            _isApplyingLanguageSelection = true;
+            try
+            {
+                LanguageComboBox.Items.Clear();
+                LanguageComboBox.Items.Add(_resourceManager.GetString("LanguageGerman") ?? "German");
+                LanguageComboBox.Items.Add(_resourceManager.GetString("LanguageEnglish") ?? "English");
+                LanguageComboBox.SelectedIndex = _currentCulture.TwoLetterISOLanguageName.Equals("en", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+            }
+            finally
+            {
+                _isApplyingLanguageSelection = false;
+            }
         }
 
         private void ApplyLanguageSelection()
         {
-            if (LanguageComboBox is null)
+            if (LanguageComboBox is null || _isApplyingLanguageSelection)
                 return;
 
             int selectedIndex = LanguageComboBox.SelectedIndex;
@@ -211,7 +220,16 @@ namespace OpenStopMotionStudio.GUI
             CultureInfo.CurrentUICulture = _currentCulture;
             CultureInfo.CurrentCulture = _currentCulture;
             Environment.SetEnvironmentVariable("OSMS_LANGUAGE", cultureName);
-            RefreshTranslatedUi();
+
+            _isApplyingLanguageSelection = true;
+            try
+            {
+                RefreshTranslatedUi();
+            }
+            finally
+            {
+                _isApplyingLanguageSelection = false;
+            }
         }
 
         private void RefreshTranslatedUi()
@@ -221,10 +239,7 @@ namespace OpenStopMotionStudio.GUI
 
             LanguageLabel.Text = _resourceManager.GetString("LanguageLabel") ?? "Language";
             CameraSectionTitle?.SetValue(TextBlock.TextProperty, _resourceManager.GetString("CameraSectionTitle") ?? "Camera");
-            LanguageComboBox.Items.Clear();
-            LanguageComboBox.Items.Add(_resourceManager.GetString("LanguageGerman") ?? "German");
-            LanguageComboBox.Items.Add(_resourceManager.GetString("LanguageEnglish") ?? "English");
-            LanguageComboBox.SelectedIndex = _currentCulture.TwoLetterISOLanguageName.Equals("en", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+            UpdateLanguageSelector();
 
             PrevFrameButton.Content = _resourceManager.GetString("PrevFrameButton_Content") ?? "◀ Previous";
             PlayPauseButton.Content = _playbackTimer.IsEnabled
@@ -343,7 +358,7 @@ namespace OpenStopMotionStudio.GUI
 
         private void LanguageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (!_uiReady)
+            if (!_uiReady || _isApplyingLanguageSelection)
                 return;
 
             ApplyLanguageSelection();
