@@ -56,5 +56,5 @@ jobs:
 
           for test_project in "${TEST_PROJECTS[@]}"; do
             echo "Running tests for: $test_project"
-            dotnet test "$test_project" --configuration Release --no-build --verbosity normal --logger "console;verbosity=normal"
+            dotnet test "$test_project" --configuration Release --verbosity normal --logger "console;verbosity=normal"
           done
