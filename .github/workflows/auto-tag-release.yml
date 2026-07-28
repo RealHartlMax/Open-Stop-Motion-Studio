@@ -8,6 +8,7 @@ on:
       - completed
     branches:
       - "**"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -19,7 +20,7 @@ concurrency:
 jobs:
   version-and-tag:
     name: Calculate SemVer and create tag
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == github.event.repository.default_branch
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == github.event.repository.default_branch)
     runs-on: ubuntu-latest
 
     steps:
@@ -28,6 +29,19 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Inspect trigger context
+        shell: bash
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "Workflow run conclusion: ${{ github.event.workflow_run.conclusion }}"
+            echo "Workflow run branch: ${{ github.event.workflow_run.head_branch }}"
+            echo "Workflow run head SHA: ${{ github.event.workflow_run.head_sha }}"
+          else
+            echo "Workflow dispatch ref: ${{ github.ref_name }}"
+            echo "Workflow dispatch SHA: ${{ github.sha }}"
+          fi
 
       - name: Determine next version
         id: version
